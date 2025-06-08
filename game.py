@@ -1,7 +1,7 @@
 import pygame
 from ui.pygame_ui import draw_board, draw_pieces, draw_player_info
 from options import show_options
-from ai.rl_ai import RL_AI
+from ai.minimax_ai import MinimaxAI
 from game_controller import GameController
 from game_setup import load_game_assets
 
@@ -23,7 +23,7 @@ def run_game(vs_ai=False, player_color="white"):
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
     names_and_icons = (top_name, top_img, bottom_name, bottom_img)
-    ai_player = RL_AI() if vs_ai else None
+    ai_player = ai_player = MinimaxAI(depth=3) if vs_ai else None
 
     controller = GameController(
         board,

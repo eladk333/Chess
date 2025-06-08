@@ -1,7 +1,7 @@
 import random
+import torch
 from rules import get_legal_moves, is_checkmate
 from ml.utils import board_to_tensor
-import torch
 
 def get_all_moves(board, color, last_move):
     moves = []
@@ -38,24 +38,27 @@ def simulate_game(policy_fn, board_factory):
     board = board_factory()
     current_color = "white"
     last_move = None
-
-    # Initial material score for current player
     previous_score = evaluate_material(board, current_color)
 
-    for turn in range(100):  # Limit game length
+    for turn in range(100):
         moves = get_all_moves(board, current_color, last_move)
         if not moves or is_checkmate(board, current_color):
-            # Game ends, punish the player who cannot move
-            final_reward = -10
-            rewards.append(torch.tensor([final_reward], dtype=torch.float32))
+            # If game ends, still record final state with strong negative reward
+            state_tensor = board_to_tensor(board).squeeze(0)
+            states.append(state_tensor)
+            rewards.append(torch.tensor([-10.0], dtype=torch.float32))
             break
 
-        state_tensor = board_to_tensor(board).unsqueeze(0)
-        move = policy_fn(moves, state_tensor)
+        state_tensor = board_to_tensor(board).squeeze(0)
+        move = policy_fn(moves, state_tensor.unsqueeze(0))
         if not move:
-            break  # don't append reward without a state
+            # Invalid move from policy — end game
+            states.append(state_tensor)
+            rewards.append(torch.tensor([-10.0], dtype=torch.float32))
+            break
 
-        states.append(state_tensor.squeeze(0))
+        # Save current state
+        states.append(state_tensor)
 
         # Apply move
         (r1, c1), (r2, c2) = move
@@ -65,14 +68,12 @@ def simulate_game(policy_fn, board_factory):
         piece.has_moved = True
         last_move = ((r1, c1), (r2, c2), piece.clone())
 
-        # Material reward
+        # Compute material gain/loss for current player
         new_score = evaluate_material(board, current_color)
         delta = new_score - previous_score
         rewards.append(torch.tensor([delta], dtype=torch.float32))
         previous_score = evaluate_material(board, current_color)
 
-        # Alternate player
         current_color = "black" if current_color == "white" else "white"
 
     return states, rewards
-

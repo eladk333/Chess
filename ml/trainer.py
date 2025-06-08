@@ -22,6 +22,10 @@ def train_model():
 
         states_tensor = torch.stack(states)
         rewards_tensor = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
+        rewards_tensor = (rewards_tensor - rewards_tensor.mean()) / (rewards_tensor.std() + 1e-6)
+        if len(states) != len(rewards):
+            print(f"[Warning] Skipping epoch due to mismatch: {len(states)} states vs {len(rewards)} rewards")
+            continue
 
         outputs = model(states_tensor)
         loss = loss_fn(outputs, rewards_tensor)
