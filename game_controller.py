@@ -29,9 +29,11 @@ class GameController:
         self.pending_ai_move = None
 
         if self.vs_ai and self.player_color == "black":
-            self.current_turn, self.last_move = handle_ai_turn(
+            self.waiting_for_ai = True
+            self.pending_ai_move = handle_ai_turn(
                 self.ai_player, self.board, self.current_turn, self.last_move
             )
+            pygame.time.set_timer(AI_MOVE_EVENT, 300)
 
     def handle_event(self, event):
         if event.type == pygame.QUIT:
