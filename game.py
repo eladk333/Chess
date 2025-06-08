@@ -37,8 +37,8 @@ def run_game(vs_ai=False, player_color="white"):
     check_message = ""
     board = create_starting_board()
     images = load_piece_images()
-    options_icon = pygame.image.load("ui/assets/icons/options.jpg").convert_alpha()
-    options_icon = pygame.transform.scale(options_icon, (32, 32))
+    raw_icon = pygame.image.load("ui/assets/icons/options.jpg").convert_alpha()
+    options_icon = pygame.transform.smoothscale(raw_icon, (32, 32))
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
     ai_icon = pygame.image.load(f"ui/assets/players/{AI_PICTURE}.png")
@@ -74,10 +74,9 @@ def run_game(vs_ai=False, player_color="white"):
     running = True
     game_over = False
     while running:
-        draw_board(screen, highlight_squares, layout)
-        screen.blit(options_icon, options_rect)
+        draw_board(screen, highlight_squares, layout)        
         draw_player_info(screen, layout, font, top_name, top_img, bottom_name, bottom_img)
-
+        screen.blit(options_icon, options_rect)
 
         if dragging and dragged_piece and drag_start:
             row, col = drag_start
