@@ -3,6 +3,10 @@ from ui.pygame_ui import draw_board, load_piece_images, draw_pieces, draw_player
 from rules import get_legal_moves, is_checkmate, is_in_check
 from ui.layout import BoardArea  
 from options import show_options
+from ai.random_ai import RandomAI
+from ai.utils import handle_ai_turn
+
+
 
 TILE_SIZE = 80
 AI_PICTURE = "chad"
@@ -25,6 +29,7 @@ def create_starting_board():
     board[0][4] = {'type': 'king', 'color': 'black', 'has_moved': False}
     board[7][4] = {'type': 'king', 'color': 'white', 'has_moved': False}
     return board
+
 
 def run_game(vs_ai=False, player_color="white"):
     pygame.init()
@@ -58,7 +63,7 @@ def run_game(vs_ai=False, player_color="white"):
     else:
         top_name, top_img = "Player 2", player2_icon
         bottom_name, bottom_img = "Player 1", player1_icon
-
+    ai_player = RandomAI() if vs_ai else None
     last_move = None
     selected = None
     current_turn = 'white'
@@ -70,6 +75,9 @@ def run_game(vs_ai=False, player_color="white"):
     drag_pos = (0, 0)
     click_down_pos = None
     drag_candidate = None
+    if vs_ai and player_color == "black":        
+        current_turn, last_move = handle_ai_turn(ai_player, board, current_turn, last_move)
+        #pygame.time.delay(300)
 
     running = True
     game_over = False
@@ -182,7 +190,9 @@ def run_game(vs_ai=False, player_color="white"):
 
                         last_move = ((src_row, src_col), (row, col), piece.copy())
                         current_turn = 'black' if current_turn == 'white' else 'white'
-
+                        if vs_ai and current_turn != player_color:                            
+                            current_turn, last_move = handle_ai_turn(ai_player, board, current_turn, last_move)
+                            #pygame.time.delay(300)
                         if is_checkmate(board, current_turn):
                             check_message = f"Checkmate! {current_turn} loses."
                             game_over = True
@@ -215,6 +225,11 @@ def run_game(vs_ai=False, player_color="white"):
 
                             last_move = ((src_row, src_col), (row, col), piece.copy())
                             current_turn = 'black' if current_turn == 'white' else 'white'
+
+                            if vs_ai and current_turn != player_color:
+                                pygame.display.flip()
+                                #pygame.time.delay(300)
+                                current_turn, last_move = handle_ai_turn(ai_player, board, current_turn, last_move)
 
                             if is_checkmate(board, current_turn):
                                 check_message = f"Checkmate! {current_turn} loses."
