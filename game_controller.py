@@ -166,19 +166,25 @@ class GameController:
         self.drag_start = None
         self.mouse_down_square = None
 
-    def _try_move(self, src, dst):
+    def _is_legal_move(self, src, dst):
         src_row, src_col = src
         dst_row, dst_col = dst
         piece = self.board[src_row][src_col]
+
         legal_moves = get_legal_moves(piece, src_row, src_col, self.board, last_move=self.last_move)
+        return (dst_row, dst_col) in legal_moves
+    
+    def _apply_move(self, src, dst):
+        src_row, src_col = src
+        dst_row, dst_col = dst
+        piece = self.board[src_row][src_col]
 
-        if (dst_row, dst_col) not in legal_moves:
-            return False
-
+        # En passant
         if piece['type'] == 'pawn' and self.board[dst_row][dst_col] is None and dst_col != src_col:
             captured_row = dst_row + (1 if piece['color'] == 'white' else -1)
             self.board[captured_row][dst_col] = None
 
+        # Castling
         if piece['type'] == 'king' and abs(dst_col - src_col) == 2:
             if dst_col == 6:
                 rook = self.board[src_row][7]
@@ -201,13 +207,16 @@ class GameController:
         self.last_move = (src, dst, piece.copy())
         self.current_turn = 'black' if self.current_turn == 'white' else 'white'
 
+    def _handle_post_move_updates(self, dst):
+        # Trigger AI if needed
         if self.vs_ai and self.current_turn != self.player_color:
-            ai_move = handle_ai_turn(self.ai_player, self.board, self.current_turn, self.last_move)
-            self.pending_ai_move = ai_move  # e.g. ((src, dst))
+            self.pending_ai_move = handle_ai_turn(
+                self.ai_player, self.board, self.current_turn, self.last_move
+            )
             self.waiting_for_ai = True
             pygame.time.set_timer(AI_MOVE_EVENT, 300)
 
-
+        # Update game status
         if is_checkmate(self.board, self.current_turn):
             self.check_message = f"Checkmate! {self.current_turn} loses."
             self.game_over = True
@@ -215,7 +224,16 @@ class GameController:
             self.check_message = "Check!"
         else:
             self.check_message = ""
+
+    def _try_move(self, src, dst):
+        if not self._is_legal_move(src, dst):
+            return False
+
+        self._apply_move(src, dst)
+        self._handle_post_move_updates(dst)
         return True
+
+
 
     def _clear_selection(self):
         self.dragging = False
