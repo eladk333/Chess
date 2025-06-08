@@ -44,20 +44,32 @@ def main():
 
     highlight_squares = []
 
+    dragging = False
+    dragged_piece = None
+    drag_start = None
+    drag_pos = (0, 0)
+
     running = True
     game_over = False
     while running:
         draw_board(screen, highlight_squares)
         draw_pieces(screen, board, images)
-        # if check_message:
-        #     text = font.render(check_message, True, (255, 0, 0))
-        #     screen.blit(text, (10, 10))
+
+        if dragging and dragged_piece:
+            image = images[f"{dragged_piece['color']}_{dragged_piece['type']}"]
+            x, y = drag_pos
+            screen.blit(image, (x - TILE_SIZE // 2, y - TILE_SIZE // 2))
+
+        if check_message:
+            text = font.render(check_message, True, (255, 0, 0))
+            screen.blit(text, (10, 10))
 
         if game_over:
             restart_text = font.render("Click to Restart", True, (0, 128, 0))
             rect = restart_text.get_rect(center=(320, 320))
             pygame.draw.rect(screen, (255, 255, 255), rect.inflate(20, 10))
             screen.blit(restart_text, rect)
+
         pygame.display.flip()
 
         for event in pygame.event.get():
@@ -69,73 +81,76 @@ def main():
                 row = y // TILE_SIZE
                 col = x // TILE_SIZE
 
-                if selected:
-                    if game_over:
-                        board = create_starting_board()
-                        selected = None
-                        current_turn = 'white'
-                        check_message = ""
-                        highlight_squares = []
-                        game_over = False
-                        continue
-
-                    src_row, src_col = selected
-                    piece = board[src_row][src_col]
-                    legal_moves = get_legal_moves(piece, src_row, src_col, board, last_move=last_move)
-
-                    if (row, col) in legal_moves:
-                        # Handle castling
-                        if piece['type'] == 'king' and abs(col - src_col) == 2:
-                            # Kingside
-                            if col == 6:
-                                rook = board[src_row][7]
-                                board[src_row][5] = rook
-                                board[src_row][7] = None
-                                rook['has_moved'] = True
-                            # Queenside
-                            elif col == 2:
-                                rook = board[src_row][0]
-                                board[src_row][3] = rook
-                                board[src_row][0] = None
-                                rook['has_moved'] = True
-
-                        # En passant capture
-                        if piece['type'] == 'pawn' and board[row][col] is None and col != src_col:
-                            # Moved diagonally to empty square → en passant
-                            captured_pawn_row = row + (1 if piece['color'] == 'white' else -1)
-                            board[captured_pawn_row][col] = None
-
-                        # Move the piece
-                        board[row][col] = piece
-                        board[src_row][src_col] = None
-                        piece['has_moved'] = True
-
-                        # Pawn promotion
-                        if piece['type'] == 'pawn':
-                            if (piece['color'] == 'white' and row == 0) or (piece['color'] == 'black' and row == 7):
-                                piece['type'] = 'queen'  # Promote to queen
-                        last_move = ((src_row, src_col), (row, col), piece.copy())
-                        current_turn = 'black' if current_turn == 'white' else 'white'
-                        # Checkmate detection
-                        if is_checkmate(board, current_turn):
-                            check_message = f"Checkmate! {current_turn} loses."
-                            game_over = True
-                        elif is_in_check(board, current_turn):
-                            check_message = "Check!"
-                        else:
-                            check_message = ""
-
-
-                    selected = None
+                if game_over:
+                    board = create_starting_board()
+                    current_turn = 'white'
+                    check_message = ""
                     highlight_squares = []
+                    game_over = False
+                    last_move = None
+                    continue
 
-                else:
-                    if board[row][col] and board[row][col]['color'] == current_turn:
-                        selected = (row, col)
-                        piece = board[row][col]
-                        highlight_squares = get_legal_moves(piece, row, col, board, last_move=last_move)
+                if board[row][col] and board[row][col]['color'] == current_turn:
+                    dragging = True
+                    dragged_piece = board[row][col]
+                    drag_start = (row, col)
+                    drag_pos = (x, y)
+                    highlight_squares = get_legal_moves(dragged_piece, row, col, board, last_move=last_move)
+
+            elif event.type == pygame.MOUSEMOTION and dragging:
+                drag_pos = pygame.mouse.get_pos()
+
+            elif event.type == pygame.MOUSEBUTTONUP and dragging:
+                dragging = False
+                x, y = pygame.mouse.get_pos()
+                row, col = y // TILE_SIZE, x // TILE_SIZE
+                src_row, src_col = drag_start
+
+                piece = dragged_piece
+                legal_moves = get_legal_moves(piece, src_row, src_col, board, last_move=last_move)
+
+                if (row, col) in legal_moves:
+                    # En passant
+                    if piece['type'] == 'pawn' and board[row][col] is None and col != src_col:
+                        captured_pawn_row = row + (1 if piece['color'] == 'white' else -1)
+                        board[captured_pawn_row][col] = None
+
+                    # Castling
+                    if piece['type'] == 'king' and abs(col - src_col) == 2:
+                        if col == 6:
+                            rook = board[src_row][7]
+                            board[src_row][5] = rook
+                            board[src_row][7] = None
+                            rook['has_moved'] = True
+                        elif col == 2:
+                            rook = board[src_row][0]
+                            board[src_row][3] = rook
+                            board[src_row][0] = None
+                            rook['has_moved'] = True
+
+                    # Move
+                    board[row][col] = piece
+                    board[src_row][src_col] = None
+                    piece['has_moved'] = True
+
+                    # Promotion
+                    if piece['type'] == 'pawn' and (row == 0 or row == 7):
+                        piece['type'] = 'queen'
+
+                    last_move = ((src_row, src_col), (row, col), piece.copy())
+                    current_turn = 'black' if current_turn == 'white' else 'white'
+
+                    if is_checkmate(board, current_turn):
+                        check_message = f"Checkmate! {current_turn} loses."
+                        game_over = True
+                    elif is_in_check(board, current_turn):
+                        check_message = "Check!"
                     else:
-                        highlight_squares = []
+                        check_message = ""
+
+                dragged_piece = None
+                highlight_squares = []
+
 
 
     pygame.quit()
