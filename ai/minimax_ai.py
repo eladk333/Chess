@@ -19,7 +19,15 @@ class MinimaxAI:
             new_board = self.simulate(board, move)
             piece = board[move[0][0]][move[0][1]]
             move_info = (move[0], move[1], piece.clone())
-            score = self.minimax(new_board, self.depth - 1, False, color, last_move=move_info)
+            score = self.minimax(
+                new_board,
+                self.depth - 1,
+                maximizing=False,
+                original_color=color,
+                last_move=move_info,
+                alpha=float("-inf"),
+                beta=float("inf")
+            )
 
             if (color == "white" and score > best_score) or (color == "black" and score < best_score):
                 best_score = score
@@ -27,7 +35,7 @@ class MinimaxAI:
 
         return best_move
 
-    def minimax(self, board, depth, maximizing, original_color, last_move=None):
+    def minimax(self, board, depth, maximizing, original_color, last_move=None, alpha=float("-inf"), beta=float("inf")):
         current_color = original_color if maximizing else ("black" if original_color == "white" else "white")
 
         if depth == 0 or is_checkmate(board, current_color):
@@ -43,8 +51,11 @@ class MinimaxAI:
                 new_board = self.simulate(board, move)
                 piece = board[move[0][0]][move[0][1]]
                 move_info = (move[0], move[1], piece.clone())
-                eval = self.minimax(new_board, depth - 1, False, original_color, last_move=move_info)
+                eval = self.minimax(new_board, depth - 1, False, original_color, move_info, alpha, beta)
                 max_eval = max(max_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break  # Alpha-Beta Prune
             return max_eval
         else:
             min_eval = float("inf")
@@ -52,8 +63,11 @@ class MinimaxAI:
                 new_board = self.simulate(board, move)
                 piece = board[move[0][0]][move[0][1]]
                 move_info = (move[0], move[1], piece.clone())
-                eval = self.minimax(new_board, depth - 1, True, original_color, last_move=move_info)
+                eval = self.minimax(new_board, depth - 1, True, original_color, move_info, alpha, beta)
                 min_eval = min(min_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break  # Alpha-Beta Prune
             return min_eval
 
     def evaluate(self, board):
