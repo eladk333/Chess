@@ -7,7 +7,7 @@ class RandomAI:
         for row in range(8):
             for col in range(8):
                 piece = board[row][col]
-                if piece and piece['color'] == color:
+                if piece and piece.color == color:
                     legal_moves = get_legal_moves(piece, row, col, board, last_move=last_move)
                     for move in legal_moves:
                         moves.append(((row, col), move))

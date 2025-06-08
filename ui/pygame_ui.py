@@ -33,8 +33,9 @@ def draw_pieces(screen, board, images, layout=None):
         for col in range(8):
             piece = board[row][col]
             if piece:
-                key = f"{piece['color']}_{piece['type']}"  
+                key = f"{piece.color}_{piece.type_name().lower()}"
                 img = images.get(key)
+                piece.image = img
                 if img:
                     x, y = layout.to_screen(row, col)
                     screen.blit(img, (x, y))

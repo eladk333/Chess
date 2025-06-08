@@ -47,19 +47,11 @@ class GameController:
         elif event.type == AI_MOVE_EVENT:
             if self.waiting_for_ai and self.pending_ai_move:
                 src, dst = self.pending_ai_move
-                self._try_move(src, dst)  # apply the AI move
+                self._try_move(src, dst)
                 self.pending_ai_move = None
                 self.waiting_for_ai = False
                 pygame.time.set_timer(AI_MOVE_EVENT, 0)
-
-
-                if is_checkmate(self.board, self.current_turn):
-                    self.check_message = f"Checkmate! {self.current_turn} loses."
-                    self.game_over = True
-                elif is_in_check(self.board, self.current_turn):
-                    self.check_message = "Check!"
-                else:
-                    self.check_message = ""
+                self._handle_post_move_updates(dst)
 
     def draw(self, screen, draw_board_func, draw_pieces_func, draw_players_func, font, options_icon, options_rect, names_and_icons):
         draw_board_func(screen, self.highlight_squares, self.layout)
@@ -76,10 +68,10 @@ class GameController:
             draw_pieces_func(screen, self.board, self.layout)
 
         if self.dragging and self.dragged_piece and self.drag_start:
-            key = f"{self.dragged_piece['color']}_{self.dragged_piece['type']}"
-            image = self.images[key]
+            image = self.dragged_piece.image
             x, y = self.drag_pos
-            screen.blit(image, (x - self.layout.tile_size // 2, y - self.layout.tile_size // 2))
+            if image:
+                screen.blit(image, (x - self.layout.tile_size // 2, y - self.layout.tile_size // 2))
 
         if self.check_message:
             text = font.render(self.check_message, True, (255, 0, 0))
@@ -103,7 +95,7 @@ class GameController:
             if abs(dx) > 5 or abs(dy) > 5:
                 row, col = self.mouse_down_square
                 piece = self.board[row][col]
-                if piece and piece['color'] == self.current_turn:
+                if piece and piece.color == self.current_turn:
                     self.dragging = True
                     self.drag_start = (row, col)
                     self.dragged_piece = piece
@@ -112,7 +104,6 @@ class GameController:
                     self.highlight_squares = get_legal_moves(
                         piece, row, col, self.board, last_move=self.last_move
                     )
-
         if self.dragging:
             self.drag_pos = pygame.mouse.get_pos()
 
@@ -130,8 +121,7 @@ class GameController:
         row, col = square
 
         if was_dragging and self.drag_start:
-            src_row, src_col = self.drag_start
-            self._try_move((src_row, src_col), (row, col))
+            self._try_move(self.drag_start, (row, col))
             self._clear_selection()
             return
 
@@ -144,7 +134,7 @@ class GameController:
                 self._try_move((src_row, src_col), (row, col))
                 self._clear_selection()
                 return
-            elif self.board[row][col] and self.board[row][col]['color'] == self.current_turn:
+            elif self.board[row][col] and self.board[row][col].color == self.current_turn:
                 self.selected = (row, col)
                 self.highlight_squares = get_legal_moves(
                     self.board[row][col], row, col, self.board, last_move=self.last_move
@@ -154,7 +144,7 @@ class GameController:
                 self._clear_selection()
                 return
 
-        if self.board[row][col] and self.board[row][col]['color'] == self.current_turn:
+        if self.board[row][col] and self.board[row][col].color == self.current_turn:
             self.selected = (row, col)
             self.highlight_squares = get_legal_moves(
                 self.board[row][col], row, col, self.board, last_move=self.last_move
@@ -170,45 +160,47 @@ class GameController:
         src_row, src_col = src
         dst_row, dst_col = dst
         piece = self.board[src_row][src_col]
-
         legal_moves = get_legal_moves(piece, src_row, src_col, self.board, last_move=self.last_move)
         return (dst_row, dst_col) in legal_moves
-    
+
     def _apply_move(self, src, dst):
         src_row, src_col = src
         dst_row, dst_col = dst
         piece = self.board[src_row][src_col]
 
         # En passant
-        if piece['type'] == 'pawn' and self.board[dst_row][dst_col] is None and dst_col != src_col:
-            captured_row = dst_row + (1 if piece['color'] == 'white' else -1)
+        if piece.type_name() == 'pawn' and self.board[dst_row][dst_col] is None and dst_col != src_col:
+            captured_row = dst_row + (1 if piece.color == 'white' else -1)
             self.board[captured_row][dst_col] = None
 
         # Castling
-        if piece['type'] == 'king' and abs(dst_col - src_col) == 2:
+        if piece.type_name() == 'king' and abs(dst_col - src_col) == 2:
             if dst_col == 6:
                 rook = self.board[src_row][7]
                 self.board[src_row][5] = rook
                 self.board[src_row][7] = None
-                rook['has_moved'] = True
+                rook.has_moved = True
             elif dst_col == 2:
                 rook = self.board[src_row][0]
                 self.board[src_row][3] = rook
                 self.board[src_row][0] = None
-                rook['has_moved'] = True
+                rook.has_moved = True
 
         self.board[dst_row][dst_col] = piece
         self.board[src_row][src_col] = None
-        piece['has_moved'] = True
+        piece.has_moved = True
 
-        if piece['type'] == 'pawn' and (dst_row == 0 or dst_row == 7):
-            piece['type'] = 'queen'
+        if piece.type_name() == 'pawn' and (dst_row == 0 or dst_row == 7):
+            from pieces.factory import create_piece
+            promoted = create_piece("queen", piece.color)
+            promoted.has_moved = True
+            promoted.image = piece.image
+            self.board[dst_row][dst_col] = promoted
 
-        self.last_move = (src, dst, piece.copy())
+        self.last_move = (src, dst, piece)
         self.current_turn = 'black' if self.current_turn == 'white' else 'white'
 
     def _handle_post_move_updates(self, dst):
-        # Trigger AI if needed
         if self.vs_ai and self.current_turn != self.player_color:
             self.pending_ai_move = handle_ai_turn(
                 self.ai_player, self.board, self.current_turn, self.last_move
@@ -216,7 +208,6 @@ class GameController:
             self.waiting_for_ai = True
             pygame.time.set_timer(AI_MOVE_EVENT, 300)
 
-        # Update game status
         if is_checkmate(self.board, self.current_turn):
             self.check_message = f"Checkmate! {self.current_turn} loses."
             self.game_over = True
@@ -228,12 +219,9 @@ class GameController:
     def _try_move(self, src, dst):
         if not self._is_legal_move(src, dst):
             return False
-
         self._apply_move(src, dst)
         self._handle_post_move_updates(dst)
         return True
-
-
 
     def _clear_selection(self):
         self.dragging = False
