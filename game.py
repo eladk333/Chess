@@ -2,6 +2,7 @@ import pygame
 from ui.pygame_ui import draw_board, draw_pieces, draw_player_info
 from options import show_options
 from ai.minimax_ai import MinimaxAI
+#from ai.random_ai import RandomAI
 from game_controller import GameController
 from game_setup import load_game_assets
 
@@ -24,6 +25,7 @@ def run_game(vs_ai=False, player_color="white"):
 
     names_and_icons = (top_name, top_img, bottom_name, bottom_img)
     ai_player = ai_player = MinimaxAI(depth=3) if vs_ai else None
+    #ai_player = RandomAI() if vs_ai else None
 
     controller = GameController(
         board,
