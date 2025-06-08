@@ -1,18 +1,20 @@
-from pieces import create_piece
 from utils import parse_pos
+from pieces import create_piece  # or define each piece class individually
 
 class Board:
     def __init__(self):
         self.grid = [[None for _ in range(8)] for _ in range(8)]
         self.current_turn = "white"
+        self.setup()
 
     def setup(self):
-        # Place pawns and other pieces using create_piece('P', 'white') etc.
-        pass
-
-    def display(self):
-        # Print board to console
-        pass
+        # place pawns
+        for col in range(8):
+            self.grid[1][col] = create_piece('P', 'black')
+            self.grid[6][col] = create_piece('P', 'white')
+        
+        # place other pieces using create_piece('R', 'white') etc.
+        # ...
 
     def make_move(self, src, dst):
         src_row, src_col = parse_pos(src)
@@ -26,5 +28,5 @@ class Board:
         return False
 
     def is_checkmate(self):
-        # Placeholder logic
+        # actual checkmate detection logic here
         return False

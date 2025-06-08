@@ -1,44 +1,45 @@
 import pygame
 from ui.pygame_ui import draw_board, load_piece_images, draw_pieces
 from rules import get_legal_moves, is_checkmate, is_in_check
+from ui.layout import BoardArea  
+from options import show_options
 
 TILE_SIZE = 80
 
 def create_starting_board():
     board = [[None for _ in range(8)] for _ in range(8)]
-
     for col in range(8):
         board[1][col] = {'type': 'pawn', 'color': 'black', 'has_moved': False}
         board[6][col] = {'type': 'pawn', 'color': 'white', 'has_moved': False}
-
     board[0][0] = board[0][7] = {'type': 'rook', 'color': 'black', 'has_moved': False}
     board[7][0] = board[7][7] = {'type': 'rook', 'color': 'white', 'has_moved': False}
-
     board[0][1] = board[0][6] = {'type': 'knight', 'color': 'black', 'has_moved': False}
     board[7][1] = board[7][6] = {'type': 'knight', 'color': 'white', 'has_moved': False}
-
     board[0][2] = board[0][5] = {'type': 'bishop', 'color': 'black', 'has_moved': False}
     board[7][2] = board[7][5] = {'type': 'bishop', 'color': 'white', 'has_moved': False}
-
     board[0][3] = {'type': 'queen', 'color': 'black', 'has_moved': False}
     board[7][3] = {'type': 'queen', 'color': 'white', 'has_moved': False}
-
     board[0][4] = {'type': 'king', 'color': 'black', 'has_moved': False}
     board[7][4] = {'type': 'king', 'color': 'white', 'has_moved': False}
-
     return board
 
 def run_game(vs_ai=False, player_color="white"):
     pygame.init()
-    screen = pygame.display.set_mode((640, 640))
+
+    layout = BoardArea(top=60, bottom=0, left=0, right=0)  
+    screen = pygame.display.set_mode((layout.screen_width, layout.screen_height))
     pygame.display.set_caption("Chess Game")
 
     font = pygame.font.SysFont(None, 48)
     check_message = ""
     board = create_starting_board()
     images = load_piece_images()
-    last_move = None
+    options_icon = pygame.image.load("ui/assets/options.jpg").convert_alpha()
+    options_icon = pygame.transform.scale(options_icon, (32, 32))
+    options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
+
+    last_move = None
     selected = None
     current_turn = 'white'
     highlight_squares = []
@@ -53,16 +54,17 @@ def run_game(vs_ai=False, player_color="white"):
     running = True
     game_over = False
     while running:
-        draw_board(screen, highlight_squares)
+        draw_board(screen, highlight_squares, layout)
+        screen.blit(options_icon, options_rect)
 
         if dragging and dragged_piece and drag_start:
             row, col = drag_start
             temp = board[row][col]
             board[row][col] = None
-            draw_pieces(screen, board, images)
+            draw_pieces(screen, board, images, layout)
             board[row][col] = temp
         else:
-            draw_pieces(screen, board, images)
+            draw_pieces(screen, board, images, layout)
 
         if dragging and dragged_piece:
             image = images[f"{dragged_piece['color']}_{dragged_piece['type']}"]
@@ -87,10 +89,19 @@ def run_game(vs_ai=False, player_color="white"):
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 click_down_pos = pygame.mouse.get_pos()
-                col = click_down_pos[0] // TILE_SIZE
-                row = click_down_pos[1] // TILE_SIZE
-                if board[row][col] and board[row][col]['color'] == current_turn:
-                    drag_candidate = (row, col)
+                if options_rect.collidepoint(click_down_pos):                    
+                    result = show_options(screen, layout)
+                    if result == "restart":
+                        return run_game(vs_ai, player_color)
+                    elif result == "menu":
+                        return  "menu"
+                    continue
+
+                square = layout.to_board(*click_down_pos)
+                if square:
+                    row, col = square
+                    if board[row][col] and board[row][col]['color'] == current_turn:
+                        drag_candidate = (row, col)
 
             elif event.type == pygame.MOUSEMOTION:
                 if drag_candidate and not dragging:
@@ -109,8 +120,14 @@ def run_game(vs_ai=False, player_color="white"):
                     drag_pos = pygame.mouse.get_pos()
 
             elif event.type == pygame.MOUSEBUTTONUP:
-                x, y = pygame.mouse.get_pos()
-                row, col = y // TILE_SIZE, x // TILE_SIZE
+                drop_pos = pygame.mouse.get_pos()
+                square = layout.to_board(*drop_pos)
+                if not square:
+                    dragging = False
+                    drag_candidate = None
+                    continue
+
+                row, col = square
 
                 if dragging:
                     dragging = False
@@ -168,22 +185,6 @@ def run_game(vs_ai=False, player_color="white"):
                         legal_moves = get_legal_moves(piece, src_row, src_col, board, last_move=last_move)
 
                         if (row, col) in legal_moves:
-                            if piece['type'] == 'pawn' and board[row][col] is None and col != src_col:
-                                captured_pawn_row = row + (1 if piece['color'] == 'white' else -1)
-                                board[captured_pawn_row][col] = None
-
-                            if piece['type'] == 'king' and abs(col - src_col) == 2:
-                                if col == 6:
-                                    rook = board[src_row][7]
-                                    board[src_row][5] = rook
-                                    board[src_row][7] = None
-                                    rook['has_moved'] = True
-                                elif col == 2:
-                                    rook = board[src_row][0]
-                                    board[src_row][3] = rook
-                                    board[src_row][0] = None
-                                    rook['has_moved'] = True
-
                             board[row][col] = piece
                             board[src_row][src_col] = None
                             piece['has_moved'] = True
@@ -212,7 +213,4 @@ def run_game(vs_ai=False, player_color="white"):
                             selected = (row, col)
                             highlight_squares = get_legal_moves(board[row][col], row, col, board, last_move=last_move)
 
-    pygame.quit()
-
-if __name__ == "__main__":
-    main()
+    return "quit"

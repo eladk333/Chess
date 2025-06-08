@@ -1,26 +1,44 @@
 import pygame
 import os
 
-TILE_SIZE = 80
-BOARD_SIZE = TILE_SIZE * 8
 LIGHT = (240, 217, 181)
 DARK = (181, 136, 99)
 
+TILE_SIZE = 80  # still used for scaling images
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets")
 
-def draw_board(screen, highlight_squares=None):
+
+def draw_board(screen, highlight_squares=None, layout=None):
     if highlight_squares is None:
         highlight_squares = []
+    if layout is None:
+        raise ValueError("draw_board requires a layout object")
 
     for row in range(8):
         for col in range(8):
             color = LIGHT if (row + col) % 2 == 0 else DARK
-            rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            x, y = layout.to_screen(row, col)
+            rect = pygame.Rect(x, y, layout.tile_size, layout.tile_size)
             pygame.draw.rect(screen, color, rect)
 
-            # Highlight square
             if (row, col) in highlight_squares:
                 pygame.draw.rect(screen, (0, 255, 0), rect, 4)  # green outline
+
+
+def draw_pieces(screen, board, images, layout=None):
+    if layout is None:
+        raise ValueError("draw_pieces requires a layout object")
+
+    for row in range(8):
+        for col in range(8):
+            piece = board[row][col]
+            if piece:
+                key = f"{piece['color']}_{piece['type']}"  # e.g. white_queen
+                img = images.get(key)
+                if img:
+                    x, y = layout.to_screen(row, col)
+                    screen.blit(img, (x, y))
+
 
 def load_piece_images():
     images = {}
@@ -31,13 +49,3 @@ def load_piece_images():
             img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
             images[key] = img
     return images
-
-def draw_pieces(screen, board, images):
-    for row in range(8):
-        for col in range(8):
-            piece = board[row][col]
-            if piece:
-                key = f"{piece['color']}_{piece['type']}"  # e.g. white_queen
-                img = images.get(key)
-                if img:
-                    screen.blit(img, (col * TILE_SIZE, row * TILE_SIZE))
