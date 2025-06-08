@@ -1,10 +1,13 @@
 import pygame
-from ui.pygame_ui import draw_board, load_piece_images, draw_pieces
+from ui.pygame_ui import draw_board, load_piece_images, draw_pieces, draw_player_info
 from rules import get_legal_moves, is_checkmate, is_in_check
 from ui.layout import BoardArea  
 from options import show_options
 
 TILE_SIZE = 80
+AI_PICTURE = "chad"
+PLAYER1_PICTURE = "bibi"
+PLAYER2_PICTURE = "yoav"
 
 def create_starting_board():
     board = [[None for _ in range(8)] for _ in range(8)]
@@ -26,7 +29,7 @@ def create_starting_board():
 def run_game(vs_ai=False, player_color="white"):
     pygame.init()
 
-    layout = BoardArea(top=60, bottom=0, left=0, right=0, flipped=(vs_ai and player_color == "black")) 
+    layout = BoardArea(top=60, bottom=60, left=0, right=0, flipped=(vs_ai and player_color == "black"))
     screen = pygame.display.set_mode((layout.screen_width, layout.screen_height))
     pygame.display.set_caption("Chess Game")
 
@@ -38,6 +41,23 @@ def run_game(vs_ai=False, player_color="white"):
     options_icon = pygame.transform.scale(options_icon, (32, 32))
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
+    ai_icon = pygame.image.load(f"ui/assets/players/{AI_PICTURE}.png")
+    ai_icon = pygame.transform.scale(ai_icon, (32, 32))
+    player1_icon = pygame.image.load(f"ui/assets/players/{PLAYER1_PICTURE}.png")
+    player1_icon = pygame.transform.scale(player1_icon, (32, 32))
+    player2_icon = pygame.image.load(f"ui/assets/players/{PLAYER2_PICTURE}.png")
+    player2_icon = pygame.transform.scale(player2_icon, (32, 32))
+
+    if vs_ai:
+        if player_color == "white":
+            bottom_name, bottom_img = "Player 1", player1_icon
+            top_name, top_img = "Chad ai", ai_icon
+        else:
+            top_name, top_img = "Chad ai", ai_icon
+            bottom_name, bottom_img = "Player 1", player1_icon
+    else:
+        top_name, top_img = "Player 2", player2_icon
+        bottom_name, bottom_img = "Player 1", player1_icon
 
     last_move = None
     selected = None
@@ -56,6 +76,8 @@ def run_game(vs_ai=False, player_color="white"):
     while running:
         draw_board(screen, highlight_squares, layout)
         screen.blit(options_icon, options_rect)
+        draw_player_info(screen, layout, font, top_name, top_img, bottom_name, bottom_img)
+
 
         if dragging and dragged_piece and drag_start:
             row, col = drag_start

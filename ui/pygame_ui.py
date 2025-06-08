@@ -49,3 +49,16 @@ def load_piece_images():
             img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
             images[key] = img
     return images
+
+def draw_player_info(screen, layout, font, top_name, top_img, bottom_name, bottom_img):
+    # Top
+    if top_img:
+        screen.blit(top_img, (10, 10))
+    top_text = font.render(top_name, True, (255, 255, 255))
+    screen.blit(top_text, (60, 20))
+
+    # Bottom
+    if bottom_img:
+        screen.blit(bottom_img, (10, layout.screen_height - layout.bottom + 10))
+    bottom_text = font.render(bottom_name, True, (255, 255, 255))
+    screen.blit(bottom_text, (60, layout.screen_height - layout.bottom + 20))
