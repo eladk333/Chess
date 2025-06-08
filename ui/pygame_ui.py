@@ -5,7 +5,7 @@ LIGHT = (240, 217, 181)
 DARK = (181, 136, 99)
 
 TILE_SIZE = 80  # still used for scaling images
-ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets")
+ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets/pieces")
 
 
 def draw_board(screen, highlight_squares=None, layout=None):

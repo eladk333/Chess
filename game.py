@@ -34,7 +34,7 @@ def run_game(vs_ai=False, player_color="white"):
     check_message = ""
     board = create_starting_board()
     images = load_piece_images()
-    options_icon = pygame.image.load("ui/assets/options.jpg").convert_alpha()
+    options_icon = pygame.image.load("ui/assets/icons/options.jpg").convert_alpha()
     options_icon = pygame.transform.scale(options_icon, (32, 32))
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
