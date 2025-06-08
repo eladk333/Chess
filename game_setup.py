@@ -1,7 +1,7 @@
 import pygame
 from ui.layout import BoardArea
 from ui.pygame_ui import load_piece_images
-from pieces.factory import create_piece  # 👈 import your factory
+from pieces.factory import create_piece  
 
 TILE_SIZE = 80
 
@@ -66,12 +66,8 @@ def load_game_assets(vs_ai=False, player_color="white"):
 
     # Set player names and icons
     if vs_ai:
-        if player_color == "white":
-            top = (PLAYER_NAMES["ai"], icons["ai"])
-            bottom = (PLAYER_NAMES["p1"], icons["p1"])
-        else:
-            top = (PLAYER_NAMES["p1"], icons["p1"])
-            bottom = (PLAYER_NAMES["ai"], icons["ai"])
+        top = (PLAYER_NAMES["ai"], icons["ai"])
+        bottom = (PLAYER_NAMES["p1"], icons["p1"])
     else:
         top = (PLAYER_NAMES["p2"], icons["p2"])
         bottom = (PLAYER_NAMES["p1"], icons["p1"])
