@@ -8,12 +8,19 @@ DARK = (181, 136, 99)
 
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets")
 
-def draw_board(screen):
+def draw_board(screen, highlight_squares=None):
+    if highlight_squares is None:
+        highlight_squares = []
+
     for row in range(8):
         for col in range(8):
             color = LIGHT if (row + col) % 2 == 0 else DARK
             rect = pygame.Rect(col * TILE_SIZE, row * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             pygame.draw.rect(screen, color, rect)
+
+            # Highlight square
+            if (row, col) in highlight_squares:
+                pygame.draw.rect(screen, (0, 255, 0), rect, 4)  # green outline
 
 def load_piece_images():
     images = {}
