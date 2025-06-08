@@ -26,7 +26,7 @@ def create_starting_board():
 def run_game(vs_ai=False, player_color="white"):
     pygame.init()
 
-    layout = BoardArea(top=60, bottom=0, left=0, right=0)  
+    layout = BoardArea(top=60, bottom=0, left=0, right=0, flipped=(vs_ai and player_color == "black")) 
     screen = pygame.display.set_mode((layout.screen_width, layout.screen_height))
     pygame.display.set_caption("Chess Game")
 
