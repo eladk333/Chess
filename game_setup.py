@@ -12,8 +12,8 @@ PLAYER_NAMES = {
 }
 
 PLAYER_PICTURES = {
-    "p1": "bibi",
-    "p2": "yoav",
+    "p1": "yoav",
+    "p2": "bibi",
     "ai": "chad"
 }
 

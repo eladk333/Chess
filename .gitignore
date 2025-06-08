@@ -1,0 +1,17 @@
+# Ignore Python cache
+__pycache__/
+*.py[cod]
+
+# Ignore PyInstaller output
+build/
+dist/
+*.spec
+
+# Ignore virtual environments
+venv/
+.env/
+*.egg-info/
+
+# Allow specific model files
+!chess_model.pt
+!chess_model_best.pt
