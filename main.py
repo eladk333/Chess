@@ -1,6 +1,7 @@
 from game import run_game
 from menu import show_menu
 
+
 if __name__ == "__main__":
    while True:
         result = show_menu()

@@ -4,12 +4,12 @@ from ml.utils import board_to_tensor
 from ml.network import ChessNet
 
 class MinimaxAI:
-    def __init__(self, model_path="chess_model_best.pt", depth=2, device="cpu"):
-        self.model = ChessNet()
-        self.model.load_state_dict(torch.load(model_path, map_location=device))
+    def __init__(self, model_path="chess_model_best.pt", depth=2, device=None):
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = ChessNet().to(self.device)
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.model.eval()
         self.depth = depth
-        self.device = device
 
     def choose_move(self, board, color, last_move):
         best_score = float("-inf") if color == "white" else float("inf")
@@ -74,6 +74,7 @@ class MinimaxAI:
         tensor = board_to_tensor(board).unsqueeze(0).to(self.device)
         with torch.no_grad():
             return self.model(tensor).item()
+
 
     def get_all_moves(self, board, color, last_move):
         moves = []
