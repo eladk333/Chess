@@ -95,8 +95,7 @@ def draw_player_info(screen, layout, font, top_name, top_img, bottom_name, botto
     top_bar = pygame.Rect(0, 0, layout.screen_width, layout.top)
     draw_gradient_rect(screen, top_bar, (10, 10, 40), (0, 200, 255))
 
-    blit_circle_icon(screen, top_img, (padding, (layout.top - icon_size) // 2), icon_size,
-                 outer_color=(0, 255, 255), inner_color=(200, 255, 255))
+    blit_circle_icon(screen, top_img, (padding, (layout.top - icon_size) // 2), icon_size, border_color=(0, 180, 255))
     draw_text_with_shadow(
         screen,
         top_name,
@@ -111,33 +110,31 @@ def draw_player_info(screen, layout, font, top_name, top_img, bottom_name, botto
     bottom_bar = pygame.Rect(0, bottom_y, layout.screen_width, layout.bottom)
     draw_gradient_rect(screen, bottom_bar, (30, 0, 0), (200, 20, 20))
 
-    blit_circle_icon(screen, bottom_img, (padding, bottom_y + (layout.bottom - icon_size) // 2), icon_size,
-                 outer_color=(255, 60, 60), inner_color=(255, 200, 200))
+    blit_circle_icon(screen, bottom_img, (padding, bottom_y + (layout.bottom - icon_size) // 2), icon_size, border_color=(220, 30, 30))
     draw_text_with_shadow(
         screen,
         bottom_name,
         font,
-        (255, 105, 180),
-        (100, 0, 100),
+        (255, 80, 80),      # Cyber red
+        (100, 0, 0),        # Dark red shadow
         (padding + icon_size + 16, bottom_y + (layout.bottom - font.get_height()) // 2)
     )
 
-def blit_circle_icon(screen, img, pos, size, outer_color=(0,255,255), inner_color=(255,255,255)):
+
+def blit_circle_icon(screen, img, pos, size, border_color=(0,255,255)):
     icon = pygame.transform.smoothscale(img, (size, size))
 
-    # Create circular mask
-    circle_surface = pygame.Surface((size, size), pygame.SRCALPHA)
-    pygame.draw.circle(circle_surface, (255, 255, 255), (size//2, size//2), size//2)
+    # Create circular icon mask
+    masked = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(masked, (255, 255, 255), (size//2, size//2), size//2)
     icon.set_colorkey((0, 0, 0))
-    circle_surface.blit(icon, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+    masked.blit(icon, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
 
-    center = (pos[0] + size//2, pos[1] + size//2)
+    # Glow background
+    pygame.draw.circle(screen, (0, 0, 0, 60), (pos[0] + size//2, pos[1] + size//2), size//2 + 3)
 
-    # Soft shadow
-    pygame.draw.circle(screen, (0, 0, 0, 60), center, size//2 + 3)
+    # Add solid border ring (not pixelated)
+    pygame.draw.circle(screen, border_color, (pos[0] + size//2, pos[1] + size//2), size//2 + 2, width=2)
 
-    # Clean, thin glow rings
-    pygame.draw.circle(screen, outer_color, center, size//2 + 1, width=2)
-    pygame.draw.circle(screen, inner_color, center, size//2 - 1, width=1)
-
-    screen.blit(circle_surface, pos)
+    # Final icon draw
+    screen.blit(masked, pos)
