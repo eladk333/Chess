@@ -16,20 +16,13 @@ def train_model():
     for epoch in range(500):
         model.train()
 
-        all_states, all_policies, all_rewards = [], [], []
-
-        for _ in range(10):  
-            states, policies, rewards = simulate_game(model, create_starting_board)
-            all_states.extend(states)
-            all_policies.extend(policies)
-            all_rewards.extend(rewards)
-
-        if not all_states:
+        states, policy_targets, rewards = simulate_game(model, create_starting_board)
+        if not states:
             continue
 
-        states_tensor = torch.stack(all_states)
-        policy_tensor = torch.stack(all_policies)
-        rewards_tensor = torch.stack(all_rewards)
+        states_tensor = torch.stack(states)                # (B, 12, 8, 8)
+        policy_tensor = torch.stack(policy_targets)        # (B, 4096)
+        rewards_tensor = torch.stack(rewards)
 
         # Forward pass
         policy_logits, value_preds = model(states_tensor)  # (B, 4096), (B, 1)
