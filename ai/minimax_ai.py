@@ -73,7 +73,9 @@ class MinimaxAI:
     def evaluate(self, board):
         tensor = board_to_tensor(board).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            return self.model(tensor).item()
+            _, value = self.model(tensor)
+        return value.item()
+
 
 
     def get_all_moves(self, board, color, last_move):

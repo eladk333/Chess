@@ -1,4 +1,4 @@
-import torch
+import time
 from ai.minimax_ai import MinimaxAI
 from ai.random_ai import RandomAI
 from rules import is_checkmate, get_legal_moves
@@ -15,21 +15,23 @@ def get_all_moves(board, color, last_move):
                     moves.append(((row, col), dst))
     return moves
 
-def play_single_game(ai_white, ai_black):
+def play_single_game(ai_white, ai_black, verbose=False, max_turns=100):
     board = create_starting_board()
     turn = "white"
     last_move = None
 
-    for _ in range(300):
+    for _ in range(max_turns):
         ai = ai_white if turn == "white" else ai_black
         moves = get_all_moves(board, turn, last_move)
 
         if not moves or is_checkmate(board, turn):
-            return "black" if turn == "white" else "white"
+            winner = "black" if turn == "white" else "white"
+            return winner
 
         move = ai.choose_move(board, turn, last_move)
         if move is None:
-            return "black" if turn == "white" else "white"
+            winner = "black" if turn == "white" else "white"
+            return winner
 
         (r1, c1), (r2, c2) = move
         piece = board[r1][c1]
@@ -42,39 +44,38 @@ def play_single_game(ai_white, ai_black):
 
     return "draw"
 
-def evaluate(n_games=10):
-    print("Evaluating Minimax AI vs Random AI...\n")
-    minimax_ai = MinimaxAI(depth=2)  # Adjust depth as needed
-    random_ai = RandomAI()
+def evaluate(ai1, ai2, n_games=20):
+    results = {"ai1": 0, "ai2": 0, "draw": 0}
+    total_time = 0.0
 
-    minimax_wins = 0
-    random_wins = 0
-    draws = 0
+    print(f"Evaluating {type(ai1).__name__} vs {type(ai2).__name__}...\n")
 
     for i in range(n_games):
-        if i % 2 == 0:
-            result = play_single_game(minimax_ai, random_ai)
-        else:
-            result = play_single_game(random_ai, minimax_ai)
+        white, black = (ai1, ai2) if i % 2 == 0 else (ai2, ai1)
 
-        if result == "white" and i % 2 == 0:
-            minimax_wins += 1
-        elif result == "black" and i % 2 == 0:
-            random_wins += 1
-        elif result == "black" and i % 2 == 1:
-            minimax_wins += 1
-        elif result == "white" and i % 2 == 1:
-            random_wins += 1
-        else:
-            draws += 1
+        start_time = time.time()
+        result = play_single_game(white, black)
+        elapsed = time.time() - start_time
+        total_time += elapsed
 
-        print(f"Game {i+1}: {result}")
+        if result == "white":
+            winner = "ai1" if i % 2 == 0 else "ai2"
+        elif result == "black":
+            winner = "ai2" if i % 2 == 0 else "ai1"
+        else:
+            winner = "draw"
+
+        results[winner] += 1
+        print(f"Game {i+1:02}: {result.upper()} wins ({elapsed:.2f}s)")
 
     print("\n=== Evaluation Summary ===")
-    print(f"Minimax AI Wins: {minimax_wins}")
-    print(f"Random AI Wins:  {random_wins}")
-    print(f"Draws:           {draws}")
-    print(f"Minimax Win Rate: {minimax_wins / n_games:.2f}")
+    print(f"{type(ai1).__name__} Wins: {results['ai1']}")
+    print(f"{type(ai2).__name__} Wins: {results['ai2']}")
+    print(f"Draws:              {results['draw']}")
+    print(f"AI1 Win Rate:       {results['ai1'] / n_games:.2f}")
+    print(f"Avg game time:      {total_time / n_games:.2f}s")
 
 if __name__ == "__main__":
-    evaluate()
+    ai1 = MinimaxAI(depth=2)
+    ai2 = RandomAI()
+    evaluate(ai1, ai2, n_games=20)

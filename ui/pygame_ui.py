@@ -23,6 +23,24 @@ def draw_board(screen, highlight_squares=None, layout=None):
 
             if (row, col) in highlight_squares:
                 pygame.draw.rect(screen, (0, 255, 0), rect, 4)  
+    # Draw coordinates
+    font = pygame.font.SysFont("Arial", 20)
+    tile = layout.tile_size
+
+    # Draw column letters A–H
+    for col in range(8):
+        letter = font.render(chr(ord('A') + col), True, (0, 0, 0))
+        x = layout.left + col * tile + tile // 2
+        y = layout.top + 8 * tile + 5
+        screen.blit(letter, letter.get_rect(center=(x, y)))
+
+    # Draw row numbers 8–1
+    for row in range(8):
+        number = font.render(str(8 - row), True, (0, 0, 0))
+        x = layout.left - 10
+        y = layout.top + row * tile + tile // 2
+        screen.blit(number, number.get_rect(center=(x, y)))
+
 
 
 def draw_pieces(screen, board, images, layout=None):
@@ -53,27 +71,31 @@ def load_piece_images():
 
 def draw_player_info(screen, layout, font, top_name, top_img, bottom_name, bottom_img):
     text_color = (255, 255, 255)
-    bg_color = (0, 0, 0)
-    img_size = 32
-    padding = 10
-    
+    bg_color = (20, 20, 20)  # dark gray
+    icon_size = 48
+    padding = 16
+
+    # Top player bar
     top_bar = pygame.Rect(0, 0, layout.screen_width, layout.top)
     pygame.draw.rect(screen, bg_color, top_bar)
 
+    screen.blit(top_img, (padding, (layout.top - icon_size) // 2))
+
     top_text = font.render(top_name, True, text_color)
-    top_text_rect = top_text.get_rect()
-    top_text_rect.topleft = (padding + img_size + padding, (layout.top - top_text.get_height()) // 2)
+    screen.blit(top_text, (
+        padding + icon_size + 12,
+        (layout.top - top_text.get_height()) // 2
+    ))
 
-    screen.blit(top_img, (padding, (layout.top - img_size) // 2))
-    screen.blit(top_text, top_text_rect)
-
-    bottom_bar_top = layout.top + layout.board_height
-    bottom_bar = pygame.Rect(0, bottom_bar_top, layout.screen_width, layout.bottom)
+    # Bottom player bar
+    bottom_y = layout.top + layout.board_height
+    bottom_bar = pygame.Rect(0, bottom_y, layout.screen_width, layout.bottom)
     pygame.draw.rect(screen, bg_color, bottom_bar)
 
-    bottom_text = font.render(bottom_name, True, text_color)
-    bottom_text_rect = bottom_text.get_rect()
-    bottom_text_rect.topleft = (padding + img_size + padding, bottom_bar_top + (layout.bottom - bottom_text.get_height()) // 2)
+    screen.blit(bottom_img, (padding, bottom_y + (layout.bottom - icon_size) // 2))
 
-    screen.blit(bottom_img, (padding, bottom_bar_top + (layout.bottom - img_size) // 2))
-    screen.blit(bottom_text, bottom_text_rect)
+    bottom_text = font.render(bottom_name, True, text_color)
+    screen.blit(bottom_text, (
+        padding + icon_size + 12,
+        bottom_y + (layout.bottom - bottom_text.get_height()) // 2
+    ))

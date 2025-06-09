@@ -42,7 +42,7 @@ def create_starting_board():
 def load_player_icons():
     def load_icon(name):
         icon = pygame.image.load(f"ui/assets/players/{name}.png")
-        return pygame.transform.scale(icon, (32, 32))
+        return pygame.transform.scale(icon,(48, 48))
 
     return {
         "p1": load_icon(PLAYER_PICTURES["p1"]),
