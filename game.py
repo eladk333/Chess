@@ -24,7 +24,7 @@ def run_game(vs_ai=False, player_color="white"):
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
 
     names_and_icons = (top_name, top_img, bottom_name, bottom_img)
-    ai_player = ai_player = MinimaxAI(depth=3) if vs_ai else None
+    ai_player = ai_player = MinimaxAI(depth=4) if vs_ai else None
     #ai_player = RandomAI() if vs_ai else None
 
     controller = GameController(

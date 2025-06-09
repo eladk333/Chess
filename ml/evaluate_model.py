@@ -20,7 +20,7 @@ def play_single_game(ai_white, ai_black):
     turn = "white"
     last_move = None
 
-    for _ in range(100):
+    for _ in range(300):
         ai = ai_white if turn == "white" else ai_black
         moves = get_all_moves(board, turn, last_move)
 
