@@ -1,5 +1,6 @@
 import pygame
 import os
+import math
 
 LIGHT = (240, 217, 181)
 DARK = (181, 136, 99)

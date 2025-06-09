@@ -6,7 +6,6 @@ from ai.minimax_ai import MinimaxAI
 from game_controller import GameController
 from game_setup import load_game_assets
 
-
 def run_game(vs_ai=False, player_color="white"):
     pygame.init()
     
@@ -34,8 +33,7 @@ def run_game(vs_ai=False, player_color="white"):
         vs_ai=vs_ai,
         player_color=player_color,
         ai_player=ai_player
-    )
-
+    )    
     while True:
         controller.draw(
             screen,
@@ -46,8 +44,7 @@ def run_game(vs_ai=False, player_color="white"):
             options_icon=options_icon,
             options_rect=options_rect,
             names_and_icons=names_and_icons,
-        )
-
+        )        
         pygame.display.flip()
 
         for event in pygame.event.get():

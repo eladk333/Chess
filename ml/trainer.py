@@ -13,7 +13,7 @@ def train_model():
 
     best_loss = float("inf")
 
-    for epoch in range(500):
+    for epoch in range(1000):
         model.train()
 
         states, policy_targets, rewards = simulate_game(model, create_starting_board)
@@ -22,7 +22,9 @@ def train_model():
 
         states_tensor = torch.stack(states)                # (B, 12, 8, 8)
         policy_tensor = torch.stack(policy_targets)        # (B, 4096)
-        rewards_tensor = torch.stack(rewards)
+        rewards_tensor = rewards
+
+        
 
         # Forward pass
         policy_logits, value_preds = model(states_tensor)  # (B, 4096), (B, 1)
@@ -43,6 +45,12 @@ def train_model():
 
         if (epoch + 1) % 20 == 0:
             print(f"Epoch {epoch+1}, Total Loss: {loss.item():.4f}, Value Loss: {value_loss.item():.4f}, Policy Loss: {policy_loss.item():.4f}")
+            print("reward stats:",
+                "shape =", rewards_tensor.shape,
+                "dtype =", rewards_tensor.dtype,
+                "min =", rewards_tensor.min().item(),
+                "max =", rewards_tensor.max().item())
+        rewards_tensor = rewards_tensor.clamp(min=-1.0, max=1.0)
         if loss.item() < best_loss:
             best_loss = loss.item()
             torch.save(model.state_dict(), "chess_model_best.pt")

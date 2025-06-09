@@ -12,7 +12,7 @@ python3 -m ml.evaluate_model
 ```
 It plays vs a random move player and returns how many wins draws and accuarcy of the model.
 
-## Just to play the game run 
+## To just play the game run 
 ```bash
 python3 main.py 
 ```

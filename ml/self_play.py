@@ -3,6 +3,15 @@ import random
 from rules import get_legal_moves, is_checkmate
 from ml.utils import board_to_tensor
 
+PIECE_VALUES = {
+    "pawn": 0.1,
+    "knight": 0.3,
+    "bishop": 0.3,
+    "rook": 0.5,
+    "queen": 0.9,
+    "king": 0.0  # shouldn't be captured
+}
+
 def get_all_moves(board, color, last_move):
     moves = []
     for row in range(8):
@@ -15,87 +24,106 @@ def get_all_moves(board, color, last_move):
     return moves
 
 def move_to_index(move):
-    # Map (from_row, from_col, to_row, to_col) to a unique index (simple version)
     (r1, c1), (r2, c2) = move
-    return (r1 * 8 + c1) * 64 + (r2 * 8 + c2)  # 0–4095
+    return (r1 * 8 + c1) * 64 + (r2 * 8 + c2)
 
-def index_to_move(index):
-    from_square = index // 64
-    to_square = index % 64
-    return ((from_square // 8, from_square % 8), (to_square // 8, to_square % 8))
+def reward_for_capture(captured_piece):
+    if captured_piece:
+        return PIECE_VALUES.get(captured_piece.__class__.__name__.lower(), 0.0)
+    return 0.0
+
+def penalize_for_losing(captured_piece, current_color, model_color, rewards):
+    if current_color != model_color and captured_piece and len(rewards) > 0:
+        penalty = PIECE_VALUES.get(captured_piece.__class__.__name__.lower(), 0.0)
+        rewards[-1] -= penalty
+
+def compute_material_score(board, color):
+    return sum([
+        {"pawn": 1, "knight": 3, "bishop": 3, "rook": 5, "queen": 9}.get(
+            (p.__class__.__name__.lower() if p else ""), 0)
+        for row in board for p in row if p and p.color == color
+    ])
 
 def simulate_game(model, board_factory):
-    states = []
-    policies = []
-    rewards = []
-
     board = board_factory()
     current_color = "white"
-    last_move = None
-    turn = 0
-    final_result = None  # +1 if white wins, -1 if black wins, 0 for draw
-
-    # Randomly assign model to play either white or black
     model_color = random.choice(["white", "black"])
+    last_move = None
+
+    states, policies, rewards = [], [], []
+    move_log = []
 
     for _ in range(100):
-        state_tensor = board_to_tensor(board)
-        state_tensor = state_tensor.unsqueeze(0)  # batch dimension
-
         legal_moves = get_all_moves(board, current_color, last_move)
         if not legal_moves:
-            final_result = -1 if current_color == "white" else 1
+            winner = "black" if current_color == "white" else "white"
             break
 
-        if current_color == model_color:
-            # Model chooses move
-            with torch.no_grad():
-                policy_logits, _ = model(state_tensor)
-            policy_logits = policy_logits.squeeze(0)
+        # Board to tensor
+        state_tensor = board_to_tensor(board).unsqueeze(0)
 
-            legal_indices = [move_to_index(m) for m in legal_moves]
-            legal_logits = torch.tensor([policy_logits[idx].item() for idx in legal_indices])
-            move_probs = torch.softmax(legal_logits, dim=0)
+        # Model prediction
+        with torch.no_grad():
+            policy_logits, _ = model(state_tensor)
+        policy_logits = policy_logits.squeeze(0)
 
-            move_idx = torch.multinomial(move_probs, 1).item()
-            chosen_move = legal_moves[move_idx]
+        legal_indices = [move_to_index(m) for m in legal_moves]
+        legal_logits = torch.tensor([policy_logits[idx].item() for idx in legal_indices])
+        move_probs = torch.softmax(legal_logits, dim=0)
+        move_idx = torch.multinomial(move_probs, 1).item()
+        chosen_move = legal_moves[move_idx]
 
-            # Create a one-hot vector of size 4096 as policy target
-            policy_target = torch.zeros(4096)
-            policy_target[move_to_index(chosen_move)] = 1.0
+        policy_target = torch.zeros(4096)
+        policy_target[move_to_index(chosen_move)] = 1.0
 
-            # Record state and policy only if it's the model's turn
-            states.append(state_tensor.squeeze(0))
-            policies.append(policy_target)
-        else:
-            # Random AI chooses move
-            chosen_move = random.choice(legal_moves)
-
-        # Make the move on the board
+        # Execute move
         (r1, c1), (r2, c2) = chosen_move
+        captured = board[r2][c2]
         piece = board[r1][c1]
+
         board[r2][c2] = piece
         board[r1][c1] = None
         piece.has_moved = True
         last_move = ((r1, c1), (r2, c2), piece.clone())
 
+        # Reward logic
+        reward = reward_for_capture(captured)
+        penalize_for_losing(captured, current_color, model_color, rewards)
+
+        # Save experience only if model is playing
+        if current_color == model_color:
+            states.append(state_tensor.squeeze(0))
+            policies.append(policy_target)
+            rewards.append(reward)
+            move_log.append((current_color, reward))
+
+        # End game on checkmate
         if is_checkmate(board, "black" if current_color == "white" else "white"):
-            final_result = 1 if current_color == "white" else -1
+            winner = current_color
             break
 
         current_color = "black" if current_color == "white" else "white"
-        turn += 1
 
-    # Assign reward to all model-played positions from model's perspective
-    if final_result is None:
-        reward_value = 0.0
-    else:
-        reward_value = 1.0 if model_color == "white" and final_result == 1 else \
-                       -1.0 if model_color == "white" and final_result == -1 else \
-                        1.0 if model_color == "black" and final_result == -1 else \
-                       -1.0 if model_color == "black" and final_result == 1 else 0.0
+    # Assign winner based on material or random tiebreak
+    if 'winner' not in locals():
+        white_score = compute_material_score(board, "white")
+        black_score = compute_material_score(board, "black")
+        if white_score > black_score:
+            winner = "white"
+        elif black_score > white_score:
+            winner = "black"
+        else:
+            winner = random.choice(["white", "black"])
 
-    reward_tensor = torch.tensor([reward_value], dtype=torch.float32)
-    rewards = [reward_tensor for _ in range(len(states))]
+    # Final game outcome reward
+    final_reward = {
+        "white": 1.0,
+        "black": -1.0,
+        None: 0.0
+    }
 
-    return states, policies, rewards
+    for i, (color, _) in enumerate(move_log):
+        rewards[i] += final_reward[winner] if color == winner else -final_reward[winner]
+
+    rewards_tensor = torch.tensor(rewards, dtype=torch.float32).unsqueeze(1)
+    return states, policies, rewards_tensor
