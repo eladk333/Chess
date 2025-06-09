@@ -4,6 +4,10 @@ from ui.layout import BoardArea
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 DARK_BG = (50, 50, 50)
+red_fill = (200, 50, 50)
+red_border = (150, 20, 20)
+red_glow = (255, 100, 100)
+
 
 def draw_fancy_button(screen, text, rect, font, 
     fill_color=(173, 216, 230), 
@@ -33,9 +37,9 @@ def show_options(screen, layout: BoardArea):
     font = pygame.font.SysFont("Arial Black", 44)
 
     # Buttons positions
-    restart_button = pygame.Rect(layout.screen_width // 2 - 150, layout.top + 160, 300, 70)
-    menu_button = pygame.Rect(layout.screen_width // 2 - 150, layout.top + 280, 300, 70)
-    back_button = pygame.Rect(30, layout.top + 30, 120, 50)  # top-left small back button
+    restart_button = pygame.Rect(layout.screen_width // 2 - 150, layout.top + 300, 300, 70)
+    menu_button = pygame.Rect(layout.screen_width // 2 - 150, layout.top + 420, 300, 70)
+    back_button = pygame.Rect(30, layout.top - 30, 120, 50)  # top-left small back button
 
     while True:
         screen.blit(background, (0, 0))
@@ -46,9 +50,9 @@ def show_options(screen, layout: BoardArea):
         screen.blit(overlay, (0, 0))
 
         # Draw buttons
-        draw_fancy_button(screen, "Restart Game", restart_button, font)
-        draw_fancy_button(screen, "Back to Menu", menu_button, font)
-        draw_fancy_button(screen, "Cancel", back_button, font, fill_color=(240, 240, 240), glow_color=(180, 180, 180))
+        draw_fancy_button(screen, "Restart Game", restart_button, font, fill_color=red_fill, border_color=red_border, glow_color=red_glow)
+        draw_fancy_button(screen, "Back to Menu", menu_button, font, fill_color=red_fill, border_color=red_border, glow_color=red_glow)
+        draw_fancy_button(screen, "back", back_button, font, fill_color=(240, 240, 240), glow_color=(180, 180, 180))
 
         pygame.display.flip()
 

@@ -7,7 +7,6 @@ DARK = (181, 136, 99)
 TILE_SIZE = 80  # still used for scaling images
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets/pieces")
 
-
 def draw_board(screen, highlight_squares=None, layout=None):
     if highlight_squares is None:
         highlight_squares = []
@@ -69,33 +68,76 @@ def load_piece_images():
             images[key] = img
     return images
 
+def draw_gradient_rect(surface, rect, color1, color2):
+    for y in range(rect.height):
+        ratio = y / rect.height
+        r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+        g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+        b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+        pygame.draw.line(surface, (r, g, b), (rect.left, rect.top + y), (rect.right, rect.top + y))
+
+
+def draw_text_with_shadow(screen, text, font, color, shadow_color, pos):
+    shadow = font.render(text, True, shadow_color)
+    screen.blit(shadow, (pos[0] + 2, pos[1] + 2))
+    label = font.render(text, True, color)
+    screen.blit(label, pos)
+
+
 def draw_player_info(screen, layout, font, top_name, top_img, bottom_name, bottom_img):
-    text_color = (255, 255, 255)
-    bg_color = (20, 20, 20)  # dark gray
+    padding = 20
     icon_size = 48
-    padding = 16
 
-    # Top player bar
+    
+    font = pygame.font.SysFont("Arial", 32, bold=True)
+
+    # TOP BAR
     top_bar = pygame.Rect(0, 0, layout.screen_width, layout.top)
-    pygame.draw.rect(screen, bg_color, top_bar)
+    draw_gradient_rect(screen, top_bar, (10, 10, 40), (0, 200, 255))
 
-    screen.blit(top_img, (padding, (layout.top - icon_size) // 2))
+    blit_circle_icon(screen, top_img, (padding, (layout.top - icon_size) // 2), icon_size,
+                 outer_color=(0, 255, 255), inner_color=(200, 255, 255))
+    draw_text_with_shadow(
+        screen,
+        top_name,
+        font,
+        (0, 255, 255),
+        (0, 100, 100),
+        (padding + icon_size + 16, (layout.top - font.get_height()) // 2)
+    )
 
-    top_text = font.render(top_name, True, text_color)
-    screen.blit(top_text, (
-        padding + icon_size + 12,
-        (layout.top - top_text.get_height()) // 2
-    ))
-
-    # Bottom player bar
+    # BOTTOM BAR
     bottom_y = layout.top + layout.board_height
     bottom_bar = pygame.Rect(0, bottom_y, layout.screen_width, layout.bottom)
-    pygame.draw.rect(screen, bg_color, bottom_bar)
+    draw_gradient_rect(screen, bottom_bar, (30, 0, 0), (200, 20, 20))
 
-    screen.blit(bottom_img, (padding, bottom_y + (layout.bottom - icon_size) // 2))
+    blit_circle_icon(screen, bottom_img, (padding, bottom_y + (layout.bottom - icon_size) // 2), icon_size,
+                 outer_color=(255, 60, 60), inner_color=(255, 200, 200))
+    draw_text_with_shadow(
+        screen,
+        bottom_name,
+        font,
+        (255, 105, 180),
+        (100, 0, 100),
+        (padding + icon_size + 16, bottom_y + (layout.bottom - font.get_height()) // 2)
+    )
 
-    bottom_text = font.render(bottom_name, True, text_color)
-    screen.blit(bottom_text, (
-        padding + icon_size + 12,
-        bottom_y + (layout.bottom - bottom_text.get_height()) // 2
-    ))
+def blit_circle_icon(screen, img, pos, size, outer_color=(0,255,255), inner_color=(255,255,255)):
+    icon = pygame.transform.smoothscale(img, (size, size))
+
+    # Create circular mask
+    circle_surface = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.circle(circle_surface, (255, 255, 255), (size//2, size//2), size//2)
+    icon.set_colorkey((0, 0, 0))
+    circle_surface.blit(icon, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+
+    center = (pos[0] + size//2, pos[1] + size//2)
+
+    # Soft shadow
+    pygame.draw.circle(screen, (0, 0, 0, 60), center, size//2 + 3)
+
+    # Clean, thin glow rings
+    pygame.draw.circle(screen, outer_color, center, size//2 + 1, width=2)
+    pygame.draw.circle(screen, inner_color, center, size//2 - 1, width=1)
+
+    screen.blit(circle_surface, pos)

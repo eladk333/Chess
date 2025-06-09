@@ -1,6 +1,7 @@
 import time
 from ai.minimax_ai import MinimaxAI
 from ai.random_ai import RandomAI
+from ai.neural_net_ai import NeuralNetAI
 from rules import is_checkmate, get_legal_moves
 from game_setup import create_starting_board
 
@@ -76,6 +77,7 @@ def evaluate(ai1, ai2, n_games=20):
     print(f"Avg game time:      {total_time / n_games:.2f}s")
 
 if __name__ == "__main__":
-    ai1 = MinimaxAI(depth=2)
+    #ai1 = MinimaxAI(depth=2)
+    ai1 = NeuralNetAI()
     ai2 = RandomAI()
     evaluate(ai1, ai2, n_games=20)

@@ -90,7 +90,7 @@ def show_menu():
 
     while True:
         screen.blit(menu_bg, (0, 0))
-        draw_title(screen, "NEURAL CHESS", title_center)
+        draw_title(screen, "Chess Game", title_center)
         draw_button(screen, "2 Player", pvp_button, font)
         draw_button(screen, "1 Player", ai_button, font)
         pygame.display.flip()

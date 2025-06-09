@@ -6,13 +6,13 @@ from pieces.factory import create_piece
 TILE_SIZE = 80
 
 PLAYER_NAMES = {
-    "p1": "Player 1",
-    "p2": "Player 2",
+    "p1": "Virgin Human",
+    "p2": "Benjamin Netanyahu",
     "ai": "Chad AI"
 }
 
 PLAYER_PICTURES = {
-    "p1": "yoav",
+    "p1": "virgin_human",
     "p2": "bibi",
     "ai": "chad"
 }
@@ -41,8 +41,9 @@ def create_starting_board():
 
 def load_player_icons():
     def load_icon(name):
-        icon = pygame.image.load(f"ui/assets/players/{name}.png")
-        return pygame.transform.scale(icon,(48, 48))
+        icon = pygame.image.load(f"ui/assets/players/{name}.png").convert_alpha()
+        return pygame.transform.smoothscale(icon, (48, 48))
+
 
     return {
         "p1": load_icon(PLAYER_PICTURES["p1"]),
