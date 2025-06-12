@@ -21,20 +21,52 @@ PLAYER_PICTURES = {
 def create_starting_board():
     board = [[None for _ in range(8)] for _ in range(8)]
 
-    for col in range(8):
-        board[1][col] = create_piece("pawn", "black")
-        board[6][col] = create_piece("pawn", "white")
-
-    board[0][0] = board[0][7] = create_piece("rook", "black")
-    board[7][0] = board[7][7] = create_piece("rook", "white")
-    board[0][1] = board[0][6] = create_piece("knight", "black")
-    board[7][1] = board[7][6] = create_piece("knight", "white")
-    board[0][2] = board[0][5] = create_piece("bishop", "black")
-    board[7][2] = board[7][5] = create_piece("bishop", "white")
-    board[0][3] = create_piece("queen", "black")
-    board[7][3] = create_piece("queen", "white")
+    # Rank 8 (row 0)
+    board[0][0] = create_piece("rook", "black")
     board[0][4] = create_piece("king", "black")
+    board[0][7] = create_piece("rook", "black")
+
+    # Rank 7 (row 1)
+    board[1][0] = create_piece("pawn", "black")
+    board[1][2] = create_piece("pawn", "black")
+    board[1][3] = create_piece("pawn", "black")
+    board[1][4] = create_piece("queen", "black")
+    board[1][5] = create_piece("pawn", "black")
+    board[1][6] = create_piece("bishop", "black")
+    board[2][0] = create_piece("bishop", "black")
+    # Rank 6 (row 2)
+    board[2][1] = create_piece("knight", "black")
+    board[2][4] = create_piece("pawn", "black")
+    board[2][5] = create_piece("knight", "black")
+    board[2][6] = create_piece("pawn", "black")
+
+    # Rank 5 (row 3)
+    #board[3][0] = create_piece("pawn", "black")
+    board[3][3] = create_piece("pawn", "white")
+    board[3][4] = create_piece("knight", "white")
+    
+    board[4][1] = create_piece("pawn", "black")
+    board[3][4] = create_piece("pawn", "white")
+
+    # Rank 3 (row 5)
+    board[5][2] = create_piece("knight", "white")
+    board[5][5] = create_piece("queen", "white")
+    board[5][7] = create_piece("pawn", "black")
+
+    # Rank 2 (row 6)
+    for col in range(8):
+        if col == 3:
+            board[6][col] = create_piece("bishop", "white")
+        elif col == 4:
+            board[6][col] = create_piece("bishop", "white")
+        else:
+            board[6][col] = create_piece("pawn", "white")
+
+    # Rank 1 (row 7)
+    board[7][0] = create_piece("rook", "white")
+    
     board[7][4] = create_piece("king", "white")
+    board[7][7] = create_piece("rook", "white")
 
     return board
 

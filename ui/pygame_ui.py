@@ -8,7 +8,7 @@ DARK = (181, 136, 99)
 TILE_SIZE = 80  # still used for scaling images
 ASSETS_PATH = os.path.join(os.path.dirname(__file__), "assets/pieces")
 
-def draw_board(screen, highlight_squares=None, layout=None):
+def draw_board(screen, highlight_squares=None, layout=None, last_move=None):
     if highlight_squares is None:
         highlight_squares = []
     if layout is None:
@@ -16,10 +16,16 @@ def draw_board(screen, highlight_squares=None, layout=None):
 
     for row in range(8):
         for col in range(8):
-            color = LIGHT if (row + col) % 2 == 0 else DARK
             x, y = layout.to_screen(row, col)
             rect = pygame.Rect(x, y, layout.tile_size, layout.tile_size)
-            pygame.draw.rect(screen, color, rect)
+
+            # Highlight last move squares
+            if last_move and (row, col) in [last_move[0], last_move[1]]:
+                pygame.draw.rect(screen, (255, 255, 100), rect)  # yellow highlight
+            else:
+                color = LIGHT if (row + col) % 2 == 0 else DARK
+                pygame.draw.rect(screen, color, rect)
+
 
             if (row, col) in highlight_squares:
                 pygame.draw.rect(screen, (0, 255, 0), rect, 4)  

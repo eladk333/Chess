@@ -54,7 +54,7 @@ class GameController:
                 self._handle_post_move_updates(dst)
 
     def draw(self, screen, draw_board_func, draw_pieces_func, draw_players_func, font, options_icon, options_rect, names_and_icons):
-        draw_board_func(screen, self.highlight_squares, self.layout)
+        draw_board_func(screen, self.highlight_squares, self.layout, self.last_move)
         draw_players_func(screen, self.layout, font, *names_and_icons)
         screen.blit(options_icon, options_rect)
 
