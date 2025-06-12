@@ -28,33 +28,40 @@ class GameController:
         self.waiting_for_ai = False
         self.pending_ai_move = None
 
+        # Only set the flag and timer if AI is black
         if self.vs_ai and self.player_color == "black":
             self.waiting_for_ai = True
-            self.pending_ai_move = handle_ai_turn(
-                self.ai_player, self.board, self.current_turn, self.last_move
-            )
             pygame.time.set_timer(AI_MOVE_EVENT, 300)
 
     def handle_event(self, event):
         if event.type == pygame.QUIT:
             return "quit"
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            if self.vs_ai and self.waiting_for_ai:
+                return
             return self._on_mouse_down(event)
         elif event.type == pygame.MOUSEMOTION:
+            if self.vs_ai and self.waiting_for_ai:
+                return
             return self._on_mouse_move(event)
         elif event.type == pygame.MOUSEBUTTONUP:
+            if self.vs_ai and self.waiting_for_ai:
+                return
             return self._on_mouse_up(event)
         elif event.type == AI_MOVE_EVENT:
-            if self.waiting_for_ai and self.pending_ai_move:
-                src, dst = self.pending_ai_move
-                self._try_move(src, dst)
-                self.pending_ai_move = None
+            if self.waiting_for_ai:
+                move = handle_ai_turn(
+                    self.ai_player, self.board, self.current_turn, self.last_move
+                )
+                if move:
+                    src, dst = move
+                    self._try_move(src, dst)
                 self.waiting_for_ai = False
                 pygame.time.set_timer(AI_MOVE_EVENT, 0)
-                self._handle_post_move_updates(dst)
 
     def draw(self, screen, draw_board_func, draw_pieces_func, draw_players_func, font, options_icon, options_rect, names_and_icons):
-        draw_board_func(screen, self.highlight_squares, self.layout, self.last_move)
+        # Pass self.last_move to draw_board_func for last move highlighting
+        draw_board_func(screen, self.highlight_squares, self.layout, last_move=self.last_move)
         draw_players_func(screen, self.layout, font, *names_and_icons)
         screen.blit(options_icon, options_rect)
 
@@ -197,14 +204,13 @@ class GameController:
             promoted.image = piece.image
             self.board[dst_row][dst_col] = promoted
 
-        self.last_move = (src, dst, piece)
+        # Save the last move as ((src_row, src_col), (dst_row, dst_col), piece)
+        self.last_move = ((src_row, src_col), (dst_row, dst_col), piece)
         self.current_turn = 'black' if self.current_turn == 'white' else 'white'
 
     def _handle_post_move_updates(self, dst):
+        # Only set the flag and timer, do not call handle_ai_turn here!
         if self.vs_ai and self.current_turn != self.player_color:
-            self.pending_ai_move = handle_ai_turn(
-                self.ai_player, self.board, self.current_turn, self.last_move
-            )
             self.waiting_for_ai = True
             pygame.time.set_timer(AI_MOVE_EVENT, 300)
 

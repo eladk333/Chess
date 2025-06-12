@@ -9,19 +9,17 @@ PIECE_VALUES = {
     "bishop": 3,
     "rook": 5,
     "queen": 9,
-    "king": 0
+    "king": 0  # not counted in material eval
 }
 
 class MinimaxAI:
     def __init__(self, depth=2):
         self.depth = depth
-        self.positions_evaluated = 0
 
     def get_move(self, board, color):
         best_score = -math.inf
         best_move = None
         is_white = (color == "white")
-        self.positions_evaluated = 0  # reset counter
 
         all_moves = []
         for row in range(8):
@@ -49,14 +47,12 @@ class MinimaxAI:
                 best_move = (src, dst)
             alpha = max(alpha, score)
 
-        if best_move:
-            print(f"[MinimaxAI] Best move: {best_move[0]} -> {best_move[1]} | Score: {best_score:.2f}")
-        print(f"[MinimaxAI] Positions evaluated: {self.positions_evaluated}")
+        # if best_move:
+        #     print(f"[MinimaxAI] Best move: {best_move[0]} -> {best_move[1]} | Score: {best_score:.2f}")
         return best_move, best_score
 
     def _minimax(self, board, depth, alpha, beta, is_white_turn):
         if depth == 0:
-            self.positions_evaluated += 1
             return evaluate_board(board, perspective="white" if is_white_turn else "black")
 
         color = "white" if is_white_turn else "black"
@@ -82,7 +78,7 @@ class MinimaxAI:
             best_score = max(best_score, score)
             alpha = max(alpha, score)
             if alpha >= beta:
-                break
+                break  # alpha-beta pruning
 
         return best_score
 
@@ -93,21 +89,26 @@ class MinimaxAI:
 
     def order_moves(self, board, moves, color):
         scored_moves = []
+
         for src, dst in moves:
             piece = board[src[0]][src[1]]
             target = board[dst[0]][dst[1]]
 
             score = 0
+
+            # MVV-LVA: prioritize capturing high-value piece with low-value piece
             if target:
                 victim_value = PIECE_VALUES.get(target.type_name(), 0)
                 attacker_value = PIECE_VALUES.get(piece.type_name(), 0)
                 score += (10 * victim_value - attacker_value)
 
+            # Promotion bonus
             if piece.type_name() == "pawn":
                 if (piece.color == "white" and dst[0] == 0) or (piece.color == "black" and dst[0] == 7):
                     score += 50
 
             scored_moves.append(((src, dst), score))
 
+        # Descending order: higher score = higher priority
         scored_moves.sort(key=lambda x: x[1], reverse=True)
         return [move for move, _ in scored_moves]
