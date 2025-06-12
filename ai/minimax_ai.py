@@ -39,7 +39,7 @@ class MinimaxAI:
 
         ordered = self.order_moves(board, all_moves, color)
         for src, dst in ordered:
-            new_board = deepcopy(board)
+            new_board = self.fast_copy_board(board)
             self.simulate_move(new_board, src, dst)
             score = -self._minimax(new_board, self.depth - 1, -beta, -alpha, not is_white)
             if score > best_score:
@@ -151,3 +151,7 @@ class MinimaxAI:
                 alpha = score
 
         return alpha
+    
+    def fast_copy_board(self, board):
+        # Assumes each piece has a .clone() method, as in your rules.py
+        return [[piece.clone() if piece else None for piece in row] for row in board]
