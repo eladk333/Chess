@@ -1,17 +1,40 @@
-import copy
+
 
 def get_legal_moves(piece, row, col, board, ignore_check=False, last_move=None):
     moves = piece.get_legal_moves(row, col, board, last_move)
 
-    if not ignore_check:
-        valid = []
-        for r, c in moves:
-            new_board = simulate_move(board, (row, col), (r, c))
-            if not is_in_check(new_board, piece.color):
-                valid.append((r, c))
-        moves = valid
+    if ignore_check:
+        return moves
 
-    return moves
+    valid = []
+    for r, c in moves:
+        move_info = make_move(board, (row, col), (r, c))
+        if not is_in_check(board, piece.color):
+            valid.append((r, c))
+        unmake_move(board, (row, col), (r, c), move_info)
+    return valid
+
+def make_move(board, src, dst):
+    """Temporarily make a move on the board. Returns info needed to undo."""
+    r1, c1 = src
+    r2, c2 = dst
+    moving_piece = board[r1][c1]
+    captured_piece = board[r2][c2]
+    board[r2][c2] = moving_piece
+    board[r1][c1] = None
+    old_has_moved = moving_piece.has_moved
+    moving_piece.has_moved = True
+    return (captured_piece, old_has_moved)
+
+def unmake_move(board, src, dst, move_info):
+    """Undo a move made by make_move."""
+    r1, c1 = src
+    r2, c2 = dst
+    moving_piece = board[r2][c2]
+    captured_piece, old_has_moved = move_info
+    board[r1][c1] = moving_piece
+    board[r2][c2] = captured_piece
+    moving_piece.has_moved = old_has_moved
 
 
 def is_empty(board, row, col):
