@@ -53,7 +53,7 @@ class MinimaxAI:
 
     def _minimax(self, board, depth, alpha, beta, is_white_turn):
         if depth == 0:
-            return evaluate_board(board, perspective="white" if is_white_turn else "black")
+            return self.quiescence(board, alpha, beta, is_white_turn)
 
         color = "white" if is_white_turn else "black"
         all_moves = []
@@ -84,7 +84,15 @@ class MinimaxAI:
 
     def simulate_move(self, board, src, dst):
         piece = board[src[0]][src[1]]
-        board[dst[0]][dst[1]] = piece
+        # Handle pawn promotion (auto-promote to queen)
+        if piece.type_name() == "pawn" and (dst[0] == 0 or dst[0] == 7):
+            from pieces.factory import create_piece
+            promoted = create_piece("queen", piece.color)
+            promoted.has_moved = True
+            promoted.image = piece.image
+            board[dst[0]][dst[1]] = promoted
+        else:
+            board[dst[0]][dst[1]] = piece
         board[src[0]][src[1]] = None
 
     def order_moves(self, board, moves, color):
@@ -112,3 +120,34 @@ class MinimaxAI:
         # Descending order: higher score = higher priority
         scored_moves.sort(key=lambda x: x[1], reverse=True)
         return [move for move, _ in scored_moves]
+
+    def quiescence(self, board, alpha, beta, is_white_turn):
+        stand_pat = evaluate_board(board, perspective="white" if is_white_turn else "black")
+        if stand_pat >= beta:
+            return beta
+        if alpha < stand_pat:
+            alpha = stand_pat
+
+        color = "white" if is_white_turn else "black"
+        all_captures = []
+        for row in range(8):
+            for col in range(8):
+                piece = board[row][col]
+                if piece and piece.color == color:
+                    for dst in get_legal_moves(piece, row, col, board):
+                        target = board[dst[0]][dst[1]]
+                        if target and target.color != color:
+                            all_captures.append(((row, col), dst))
+
+        ordered = self.order_moves(board, all_captures, color)
+        for src, dst in ordered:
+            new_board = deepcopy(board)
+            self.simulate_move(new_board, src, dst)
+            score = -self.quiescence(new_board, -beta, -alpha, not is_white_turn)
+
+            if score >= beta:
+                return beta
+            if score > alpha:
+                alpha = score
+
+        return alpha
