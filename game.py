@@ -2,36 +2,46 @@ import pygame
 from ui.pygame_ui import draw_board, draw_pieces, draw_player_info
 from options import show_options
 from ai.minmax import MinimaxAI
+from ai.random_ai import RandomAI
 from game_controller import GameController
 from game_setup import load_game_assets
 
-def run_game(vs_ai=False, player_color="white"):
+def run_game(mode="pvp", player_color="white", ai_setup=None):
     pygame.init()
     
-    # Load layout, board, images, and player icons
-    layout, board, images, (top_name, top_img), (bottom_name, bottom_img) = load_game_assets(vs_ai, player_color)
-    
+    layout, board, images, (top_name, top_img), (bottom_name, bottom_img) = load_game_assets(mode, player_color)
     screen = pygame.display.set_mode((layout.screen_width, layout.screen_height))
     pygame.display.set_caption("Chess Game")
-
     font = pygame.font.SysFont(None, 48)
 
-    # Load options icon
     raw_icon = pygame.image.load("ui/assets/icons/options.jpg").convert_alpha()
     options_icon = pygame.transform.smoothscale(raw_icon, (32, 32))
     options_rect = options_icon.get_rect(topleft=(layout.screen_width - 42, 14))
-
     names_and_icons = (top_name, top_img, bottom_name, bottom_img)
-    ai_player = MinimaxAI(depth=4) if vs_ai else None
+
+    # Instantiate AIs
+    white_ai = None
+    black_ai = None
+
+    if mode == "pve":
+        if player_color == "white":
+            black_ai = MinimaxAI(depth=4)
+        else:
+            white_ai = MinimaxAI(depth=4)
+    elif mode == "eve" and ai_setup:
+        # ai_setup is a dictionary like: {"white": "minimax", "black": "random"}
+        white_ai = MinimaxAI(depth=4) if ai_setup["white"] == "minimax" else RandomAI()
+        black_ai = MinimaxAI(depth=4) if ai_setup["black"] == "minimax" else RandomAI()
 
     controller = GameController(
         board,
         layout,
         images,
-        vs_ai=vs_ai,
-        player_color=player_color,
-        ai_player=ai_player
+        mode=mode,
+        white_ai=white_ai,
+        black_ai=black_ai
     )    
+
     while True:
         controller.draw(
             screen,
@@ -51,7 +61,7 @@ def run_game(vs_ai=False, player_color="white"):
                 if options_rect.collidepoint(mouse_pos):
                     result = show_options(screen, layout)
                     if result == "restart":
-                        return run_game(vs_ai, player_color)
+                        return run_game(mode, player_color, ai_setup)
                     elif result == "menu":
                         return "menu"
                     continue

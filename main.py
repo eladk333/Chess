@@ -1,22 +1,24 @@
 from game import run_game
 from menu import show_menu
 
-
 if __name__ == "__main__":
    while True:
         result = show_menu()
         if result is None:
             break
 
-        mode, player_color = result
+        mode, setup_data = result
+        
         if mode == "pvp":
-            outcome = run_game(vs_ai=False)
-        elif mode == "ai":
-            outcome = run_game(vs_ai=True, player_color=player_color)
+            outcome = run_game(mode="pvp")
+        elif mode == "pve":
+            outcome = run_game(mode="pve", player_color=setup_data)
+        elif mode == "eve":
+            outcome = run_game(mode="eve", ai_setup=setup_data)
         else:
-            continue  # unrecognized result
+            continue
 
         if outcome == "menu":
-            continue  # loop back to show_menu
+            continue
         elif outcome == "quit":
             break

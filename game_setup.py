@@ -28,18 +28,20 @@ def load_player_icons():
         "ai": load_icon(PLAYER_PICTURES["ai"])
     }
 
-def load_game_assets(vs_ai=False, player_color="white"):
-    layout = BoardArea(top=60, bottom=60, left=0, right=0, flipped=(vs_ai and player_color == "black"))
+def load_game_assets(mode="pvp", player_color="white"):
+    layout = BoardArea(top=60, bottom=60, left=0, right=0, flipped=(mode == "pve" and player_color == "black"))
     
-    # Initialize the python-chess bitboard
     board = chess.Board() 
     images = load_piece_images()
     icons = load_player_icons()
 
-    # Set player names and icons
-    if vs_ai:
+    if mode == "pve":
         top = (PLAYER_NAMES["ai"], icons["ai"])
         bottom = (PLAYER_NAMES["p1"], icons["p1"])
+    elif mode == "eve":
+        # Both are AI!
+        top = ("Black AI", icons["ai"])
+        bottom = ("White AI", icons["ai"])
     else:
         top = (PLAYER_NAMES["p2"], icons["p2"])
         bottom = (PLAYER_NAMES["p1"], icons["p1"])

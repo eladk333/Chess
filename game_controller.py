@@ -1,11 +1,9 @@
 import pygame
 import chess
-from ai.utils import handle_ai_turn
 
 AI_MOVE_EVENT = pygame.USEREVENT + 1
 
 class DummyPiece:
-    """Adapter so your UI's draw_pieces can read piece.color, piece.type_name(), and piece.image"""
     def __init__(self, chess_piece, images):
         self.color = "white" if chess_piece.color == chess.WHITE else "black"
         self.type = chess.PIECE_NAMES[chess_piece.piece_type]
@@ -15,22 +13,21 @@ class DummyPiece:
         return self.type
 
 class GameController:
-    def __init__(self, board: chess.Board, layout, images, vs_ai=False, player_color="white", ai_player=None):
+    def __init__(self, board: chess.Board, layout, images, mode="pvp", white_ai=None, black_ai=None):
         self.board = board
         self.layout = layout
         self.images = images
-        self.vs_ai = vs_ai
+        self.mode = mode
         
-        # UI State
-        self.player_color = chess.WHITE if player_color == "white" else chess.BLACK
-        self.ai_player = ai_player
+        self.white_ai = white_ai
+        self.black_ai = black_ai
+        
         self.last_move = None
         self.selected = None
         self.highlight_squares = []
         self.check_message = ""
         self.game_over = False
 
-        # Dragging State
         self.dragging = False
         self.dragged_piece = None
         self.drag_start = None
@@ -38,28 +35,22 @@ class GameController:
         self.click_down_pos = None
         self.mouse_down_square = None
         
-        # AI Timer
         self.waiting_for_ai = False
-        if self.vs_ai and self.player_color == chess.BLACK:
-            self.waiting_for_ai = True
-            pygame.time.set_timer(AI_MOVE_EVENT, 300)
+        
+        # Kick off the AI logic if the starting player is AI
+        self._check_ai_turn()
 
-    # --- Coordinate Translators ---
-    # --- Coordinate Translators ---
     def _to_chess_square(self, row, col):
-        """Converts UI (row, col) to python-chess square (0-63)"""
         if row is None or col is None: return None
         return chess.square(col, 7 - row)
 
     def _to_ui_coord(self, square):
-        """Converts python-chess square (0-63) to UI (row, col)"""
         if square is None: return None
         rank = chess.square_rank(square)
         file = chess.square_file(square)
         return (7 - rank, file)
 
     def _get_ui_board(self):
-        """Generates the 8x8 array your UI expects on the fly."""
         ui_board = [[None for _ in range(8)] for _ in range(8)]
         for sq in chess.SQUARES:
             piece = self.board.piece_at(sq)
@@ -68,7 +59,22 @@ class GameController:
                 ui_board[r][c] = DummyPiece(piece, self.images)
         return ui_board
 
-    # --- Core Loop ---
+    def _check_ai_turn(self):
+        """Checks if the current turn belongs to an AI and sets the timer if so."""
+        if self.game_over:
+            return
+            
+        is_ai_turn = False
+        if self.board.turn == chess.WHITE and self.white_ai:
+            is_ai_turn = True
+        elif self.board.turn == chess.BLACK and self.black_ai:
+            is_ai_turn = True
+            
+        if is_ai_turn:
+            self.waiting_for_ai = True
+            # Add a slight delay (300ms) so moves don't happen instantly
+            pygame.time.set_timer(AI_MOVE_EVENT, 300)
+
     def handle_event(self, event):
         if event.type == pygame.QUIT:
             return "quit"
@@ -82,30 +88,35 @@ class GameController:
             return self._on_mouse_move(event)
         elif event.type == pygame.MOUSEBUTTONUP and not self.waiting_for_ai:
             return self._on_mouse_up(event)
+            
         elif event.type == AI_MOVE_EVENT:
             if self.waiting_for_ai:
-                # Assuming your AI returns a chess.Move object now
-                move = self.ai_player.get_best_move(self.board) 
-                if move:
-                    self._apply_move(move)
+                pygame.time.set_timer(AI_MOVE_EVENT, 0) # Turn off the timer
+                
+                # Fetch the correct AI
+                current_ai = self.white_ai if self.board.turn == chess.WHITE else self.black_ai
+                
+                if current_ai:
+                    move = current_ai.get_best_move(self.board, time_limit=3.0)
+                    if move:
+                        self._apply_move(move)
+                        
                 self.waiting_for_ai = False
-                pygame.time.set_timer(AI_MOVE_EVENT, 0)
+                self._check_ai_turn() # Check if the *next* player is also AI!
 
     def draw(self, screen, draw_board_func, draw_pieces_func, draw_players_func, font, options_icon, options_rect, names_and_icons):
         ui_board = self._get_ui_board()
         
-        # Format last move for UI highlighting
         ui_last_move = None
         if self.last_move:
             src = self._to_ui_coord(self.last_move.from_square)
             dst = self._to_ui_coord(self.last_move.to_square)
-            ui_last_move = (src, dst, None) # None because UI doesn't strictly need the piece object for highlighting
+            ui_last_move = (src, dst, None) 
 
         draw_board_func(screen, self.highlight_squares, self.layout, last_move=ui_last_move)
         draw_players_func(screen, self.layout, font, *names_and_icons)
         screen.blit(options_icon, options_rect)
 
-        # Handle drawing the dragged piece
         if self.dragging and self.drag_start:
             r, c = self.drag_start
             temp = ui_board[r][c]
@@ -123,7 +134,6 @@ class GameController:
             text = font.render(self.check_message, True, (255, 0, 0))
             screen.blit(text, (10, 10))
 
-    # --- Mouse Handlers ---
     def _on_mouse_down(self, event):
         self.click_down_pos = pygame.mouse.get_pos()
         self.mouse_down_square = self.layout.to_board(*self.click_down_pos)
@@ -165,11 +175,9 @@ class GameController:
 
         target_sq = self._to_chess_square(*target_rc)
 
-        # Execute move if valid
         if self.selected:
             src_sq = self._to_chess_square(*self.selected)
             
-            # Auto-promote to Queen for simplicity (can add UI for this later)
             move = chess.Move(src_sq, target_sq)
             if chess.Move(src_sq, target_sq, promotion=chess.QUEEN) in self.board.legal_moves:
                 move = chess.Move(src_sq, target_sq, promotion=chess.QUEEN)
@@ -177,9 +185,9 @@ class GameController:
             if move in self.board.legal_moves:
                 self._apply_move(move)
                 self._clear_selection()
+                self._check_ai_turn() # Check if AI should respond to your move
                 return
 
-        # Handle simple clicking (selection)
         piece = self.board.piece_at(target_sq)
         if piece and piece.color == self.board.turn:
             self.selected = target_rc
@@ -188,7 +196,6 @@ class GameController:
             self._clear_selection()
 
     def _update_highlights(self, square):
-        """Highlights legal moves for the selected piece"""
         self.highlight_squares = []
         for move in self.board.legal_moves:
             if move.from_square == square:
@@ -198,10 +205,6 @@ class GameController:
         self.board.push(move)
         self.last_move = move
         self._update_game_state()
-
-        if self.vs_ai and self.board.turn != self.player_color and not self.game_over:
-            self.waiting_for_ai = True
-            pygame.time.set_timer(AI_MOVE_EVENT, 300)
 
     def _update_game_state(self):
         if self.board.is_checkmate():
