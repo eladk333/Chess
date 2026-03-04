@@ -33,16 +33,20 @@ def draw_board(screen, highlight_squares=None, layout=None, last_move=None):
     font = pygame.font.SysFont("Arial", 20)
     tile = layout.tile_size
 
-    # Draw column letters A–H
+    # Draw column letters
     for col in range(8):
-        letter = font.render(chr(ord('A') + col), True, (0, 0, 0))
+        # If flipped, 'H' should be on the left (col 0)
+        display_col = 7 - col if layout.flipped else col
+        letter = font.render(chr(ord('A') + display_col), True, (0, 0, 0))
         x = layout.left + col * tile + tile // 2
         y = layout.top + 8 * tile + 5
         screen.blit(letter, letter.get_rect(center=(x, y)))
 
-    # Draw row numbers 8–1
+    # Draw row numbers
     for row in range(8):
-        number = font.render(str(8 - row), True, (0, 0, 0))
+        # If flipped, '1' should be at the top (row 0)
+        display_row = row + 1 if layout.flipped else 8 - row
+        number = font.render(str(display_row), True, (0, 0, 0))
         x = layout.left - 10
         y = layout.top + row * tile + tile // 2
         screen.blit(number, number.get_rect(center=(x, y)))
