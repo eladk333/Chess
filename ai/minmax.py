@@ -1,5 +1,6 @@
 import chess
 import math
+import time
 
 class MinimaxAI:
     def __init__(self, depth=3):
@@ -91,46 +92,61 @@ class MinimaxAI:
         -50,-30,-30,-30,-30,-30,-30,-50
     ]
 
-    def get_best_move(self, board: chess.Board):
-        """
-        Entry point for the AI turn.
-        """
+    def search_at_depth(self, board, depth, start_time, time_limit):
         best_move = None
         is_maximizing = board.turn == chess.WHITE
-        
         best_value = -math.inf if is_maximizing else math.inf
-        
-        # Initialize alpha and beta
-        alpha = -math.inf
-        beta = math.inf
+        alpha, beta = -math.inf, math.inf
 
         moves = list(board.legal_moves)
-        # Sort moves based on our scoring function, highest score first
         moves.sort(key=lambda m: self.score_move(board, m), reverse=True)
-        
+
         for move in moves:
+            # Periodic time check
+            if time.time() - start_time > time_limit:
+                return None # Signal timeout
+
             board.push(move)
-            
-            # Pass alpha and beta down the tree
-            board_value = self.minimax(board, self.depth - 1, alpha, beta, not is_maximizing)
-            
+            board_value = self.minimax(board, depth - 1, alpha, beta, not is_maximizing)
             board.pop()
 
             if is_maximizing:
                 if board_value > best_value:
-                    best_value = board_value
-                    best_move = move
-                # Update alpha at the root
+                    best_value, best_move = board_value, move
                 alpha = max(alpha, best_value)
             else:
                 if board_value < best_value:
-                    best_value = board_value
-                    best_move = move
-                # Update beta at the root
+                    best_value, best_move = board_value, move
                 beta = min(beta, best_value)
                 
         return best_move
 
+    def get_best_move(self, board: chess.Board, time_limit=5.0):
+        """
+        Uses Iterative Deepening to search deeper and deeper until time runs out.
+        """
+        start_time = time.time()
+        best_move_overall = None
+        current_depth = 1
+
+        # Loop until we run out of time
+        while True:
+            # Check if we have time for at least one more level
+            if time.time() - start_time > time_limit:
+                break
+
+            # Search at the current depth
+            move = self.search_at_depth(board, current_depth, start_time, time_limit)
+            
+            # Only update if the search actually finished (didn't time out)
+            if move:
+                best_move_overall = move
+                current_depth += 1
+            else:
+                break # Search timed out
+                
+        print(f"Reached depth: {current_depth - 1}")
+        return best_move_overall
     def minimax(self, board: chess.Board, depth: int, alpha: float, beta: float, is_maximizing: bool) -> float:
         """
         Minimax algorithm with Alpha-Beta pruning.
