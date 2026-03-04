@@ -121,7 +121,7 @@ class MinimaxAI:
                 
         return best_move
 
-    def get_best_move(self, board: chess.Board, time_limit=5.0):
+    def get_best_move(self, board: chess.Board, time_limit=2.0):
         """
         Uses Iterative Deepening to search deeper and deeper until time runs out.
         """
