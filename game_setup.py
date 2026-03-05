@@ -28,7 +28,7 @@ def load_player_icons():
         "ai": load_icon(PLAYER_PICTURES["ai"])
     }
 
-def load_game_assets(mode="pvp", player_color="white"):
+def load_game_assets(mode="pvp", player_color="white", ai_setup=None):
     layout = BoardArea(top=60, bottom=60, left=0, right=0, flipped=(mode == "pve" and player_color == "black"))
     
     board = chess.Board() 
@@ -39,9 +39,12 @@ def load_game_assets(mode="pvp", player_color="white"):
         top = (PLAYER_NAMES["ai"], icons["ai"])
         bottom = (PLAYER_NAMES["p1"], icons["p1"])
     elif mode == "eve":
-        # Both are AI!
-        top = ("Black AI", icons["ai"])
-        bottom = ("White AI", icons["ai"])
+        if ai_setup:
+            top = (f'{ai_setup["black"].capitalize()} AI', icons["ai"])
+            bottom = (f'{ai_setup["white"].capitalize()} AI', icons["ai"])
+        else:
+            top = ("Black AI", icons["ai"])
+            bottom = ("White AI", icons["ai"])
     else:
         top = (PLAYER_NAMES["p2"], icons["p2"])
         bottom = (PLAYER_NAMES["p1"], icons["p1"])

@@ -64,7 +64,7 @@ def show_menu():
         draw_title(screen, "Chess Game", title_center)
         draw_button(screen, "2 Player", pvp_button, font)
         draw_button(screen, "1 Player", ai_button, font)
-        draw_button(screen, "0 Player (AI v AI)", zero_p_button, font)
+        draw_button(screen, "0 Player", zero_p_button, font)
         pygame.display.flip()
 
         for event in pygame.event.get():

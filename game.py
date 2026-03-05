@@ -9,7 +9,7 @@ from game_setup import load_game_assets
 def run_game(mode="pvp", player_color="white", ai_setup=None):
     pygame.init()
     
-    layout, board, images, (top_name, top_img), (bottom_name, bottom_img) = load_game_assets(mode, player_color)
+    layout, board, images, (top_name, top_img), (bottom_name, bottom_img) = load_game_assets(mode, player_color, ai_setup)
     screen = pygame.display.set_mode((layout.screen_width, layout.screen_height))
     pygame.display.set_caption("Chess Game")
     font = pygame.font.SysFont(None, 48)
