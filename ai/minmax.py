@@ -7,9 +7,10 @@ class TimeoutException(Exception):
     pass
 
 class MinimaxAI:
-    def __init__(self, depth=3):
+    def __init__(self, depth=4):
         self.depth = depth
         self.tt = {} # The Transposition Table
+        self.stats = {}
     
     # Pawns: Encouraged to advance and control the center.
     PAWN_PST = [
@@ -98,81 +99,143 @@ class MinimaxAI:
     def get_best_move(self, board: chess.Board, time_limit=5.0):
         """
         Iterative Deepening using the Transposition Table for memory and move ordering.
+        Prints search stats after the AI move is chosen.
         """
         start_time = time.time()
+
+        # Reset stats for THIS AI move
+        self.stats = {
+            "nodes": 0,       # positions searched (minimax nodes)
+            "tt_hits": 0,     # transposition hits (TT reused)
+        }
+
         best_move_overall = None
+        last_completed_depth = 0
+        last_completed_score = None
+
         current_depth = 1
-        # if len(board.move_stack) == 0 and board.turn == chess.WHITE:
-        #     return chess.Move.from_uci("e2e4")
         try:
             while True:
-                # Run the search for the current depth
-                self.minimax(board, current_depth, -math.inf, math.inf, board.turn == chess.WHITE, start_time, time_limit)
-                
-                # If the search finishes without timing out, grab the best move from the TT
-                tt_entry = self.tt.get(board.fen())
-                if tt_entry and tt_entry['best_move']:
-                    best_move_overall = tt_entry['best_move']
-                
-                current_depth += 1
-                
-        except TimeoutException:
-            # Time ran out! The loop instantly breaks, and we return the best move 
-            # from the last fully completed depth.
-            pass 
+                # Run a full search for this depth (or TimeoutException)
+                score = self.minimax(
+                    board,
+                    current_depth,
+                    -math.inf,
+                    math.inf,
+                    board.turn == chess.WHITE,
+                    start_time,
+                    time_limit
+                )
 
-        print(f"Reached depth: {current_depth - 1}")
-        
+                # If we got here: this depth COMPLETED
+                last_completed_depth = current_depth
+                last_completed_score = score
+
+                # Grab best move from TT at root
+                tt_entry = self.tt.get(board.fen())
+                if tt_entry and tt_entry.get("best_move"):
+                    best_move_overall = tt_entry["best_move"]
+
+                current_depth += 1
+
+        except TimeoutException:
+            pass
+
+        elapsed = time.time() - start_time
+
         # Fallback if extremely low time limit prevented even depth 1 from finishing
         if best_move_overall is None:
             best_move_overall = list(board.legal_moves)[0]
-            
+
+        # Pretty score print
+        def fmt_score(s):
+            if s is None:
+                return "N/A"
+            # Your evaluate uses +/-100000 for mate
+            if abs(s) >= 99999:
+                return "MATE" if s > 0 else "-MATE"
+            # centipawns
+            return f"{s/100.0:+.2f}"
+
+        print(
+            f"[Minimax] depth={last_completed_depth}  "
+            f"positions={self.stats['nodes']}  "
+            f"transpositions={self.stats['tt_hits']}  "
+            f"move={best_move_overall.uci()}  "
+            f"eval={fmt_score(last_completed_score)}"
+        )
+
         return best_move_overall
 
-    def minimax(self, board: chess.Board, depth: int, alpha: float, beta: float, is_maximizing: bool, start_time: float, time_limit: float) -> float:
+    def minimax(
+        self,
+        board: chess.Board,
+        depth: int,
+        alpha: float,
+        beta: float,
+        is_maximizing: bool,
+        start_time: float,
+        time_limit: float
+    ) -> float:
         """
         Minimax algorithm with Alpha-Beta pruning and Transposition Table integration.
+        Stats tracked:
+        - nodes: minimax nodes visited
+        - tt_hits: TT entries reused
+        - tt_cutoffs: cutoffs caused by TT bounds
+        - tt_stores: TT stores performed
         """
-        # 1. True Timeout Check
+        # Stats: count this node
+        self.stats["nodes"] += 1
+
+        # 1) Timeout check
         if time.time() - start_time > time_limit:
             raise TimeoutException()
 
-        # 2. Transposition Table Lookup
+        # 2) Transposition Table lookup
         hash_key = board.fen()
         tt_entry = self.tt.get(hash_key)
-        
-        if tt_entry and tt_entry['depth'] >= depth:
-            if tt_entry['flag'] == 'EXACT':
-                return tt_entry['score']
-            elif tt_entry['flag'] == 'LOWERBOUND':
-                alpha = max(alpha, tt_entry['score'])
-            elif tt_entry['flag'] == 'UPPERBOUND':
-                beta = min(beta, tt_entry['score'])
-            if alpha >= beta:
-                return tt_entry['score'] # Prune!
 
-        # 3. Base Cases
+        if tt_entry and tt_entry["depth"] >= depth:
+            self.stats["tt_hits"] += 1
+
+            flag = tt_entry["flag"]
+            score = tt_entry["score"]
+
+            if flag == "EXACT":
+                return score
+            elif flag == "LOWERBOUND":
+                alpha = max(alpha, score)
+            elif flag == "UPPERBOUND":
+                beta = min(beta, score)
+
+            if alpha >= beta:                
+                return score  # prune
+
+        # 3) Base cases
         if board.is_game_over():
             return self.evaluate(board)
+
         if depth == 0:
             return self.quiescence_search(board, alpha, beta, is_maximizing, start_time, time_limit)
 
         original_alpha = alpha
         original_beta = beta
         best_move_this_node = None
-        tt_best_move = tt_entry['best_move'] if tt_entry else None
 
-        # 4. Move Generation and Perfect Ordering
+        tt_best_move = tt_entry["best_move"] if tt_entry else None
+
+        # 4) Move generation + ordering (TT best move first, then MVV-LVA)
         moves = list(board.legal_moves)
-        
-        def get_move_score(m):
-            if m == tt_best_move:
-                return 1000000 # Absolute highest priority for the TT's known best move
+
+        def get_move_score(m: chess.Move) -> int:
+            if tt_best_move is not None and m == tt_best_move:
+                return 1_000_000
             return self.score_move(board, m)
-            
+
         moves.sort(key=get_move_score, reverse=True)
 
-        # 5. Minimax Logic with try...finally block
+        # 5) Alpha-beta search
         if is_maximizing:
             best_val = -math.inf
             for move in moves:
@@ -185,9 +248,9 @@ class MinimaxAI:
                 if score > best_val:
                     best_val = score
                     best_move_this_node = move
-                
+
                 alpha = max(alpha, best_val)
-                if beta <= alpha:
+                if alpha >= beta:
                     break
         else:
             best_val = math.inf
@@ -201,31 +264,31 @@ class MinimaxAI:
                 if score < best_val:
                     best_val = score
                     best_move_this_node = move
-                
+
                 beta = min(beta, best_val)
-                if beta <= alpha:
+                if alpha >= beta:
                     break
 
-        # 6. Transposition Table Store
-        flag = 'EXACT'
+        # 6) Transposition Table store (bound type depends on how alpha/beta changed)
+        flag = "EXACT"
         if best_val <= original_alpha:
-            flag = 'UPPERBOUND'
-        elif best_val >= original_beta: 
-            flag = 'LOWERBOUND'
+            flag = "UPPERBOUND"
+        elif best_val >= original_beta:
+            flag = "LOWERBOUND"
 
         self.tt[hash_key] = {
-            'depth': depth,
-            'score': best_val,
-            'flag': flag,
-            'best_move': best_move_this_node
-        }
+            "depth": depth,
+            "score": best_val,
+            "flag": flag,
+            "best_move": best_move_this_node,
+        }        
 
         return best_val
 
     def quiescence_search(self, board: chess.Board, alpha: float, beta: float, is_maximizing: bool, start_time: float, time_limit: float) -> float:
         """
         A restricted search that only explores captures to resolve the Horizon Effect.
-        """
+        """        
         if time.time() - start_time > time_limit:
             raise TimeoutException()
 
@@ -323,8 +386,8 @@ class MinimaxAI:
     def evaluate(self, board: chess.Board) -> float:
         """
         Evaluates the board based on material advantage AND piece-square tables.
-        """
-        if board.is_checkmate():
+        """        
+        if board.is_checkmate():            
             return -100000 if board.turn == chess.WHITE else 100000
         if board.is_game_over(): 
             return 0
