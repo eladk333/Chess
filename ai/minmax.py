@@ -102,7 +102,8 @@ class MinimaxAI:
         start_time = time.time()
         best_move_overall = None
         current_depth = 1
-
+        # if len(board.move_stack) == 0 and board.turn == chess.WHITE:
+        #     return chess.Move.from_uci("e2e4")
         try:
             while True:
                 # Run the search for the current depth

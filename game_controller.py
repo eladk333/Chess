@@ -118,7 +118,7 @@ class GameController:
                 current_ai = self.white_ai if self.board.turn == chess.WHITE else self.black_ai
                 
                 if current_ai:
-                    move = current_ai.get_best_move(self.board, time_limit=5.0)
+                    move = current_ai.get_best_move(self.board, time_limit=3.0)
                     if move:
                         self._apply_move(move)
                         
