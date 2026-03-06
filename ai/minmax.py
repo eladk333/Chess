@@ -132,7 +132,8 @@ class MinimaxAI:
                 last_completed_score = score
 
                 # Grab best move from TT at root
-                tt_entry = self.tt.get(board.fen())
+                hash_key = chess.polyglot.zobrist_hash(board)
+                tt_entry = self.tt.get(hash_key)
                 if tt_entry and tt_entry.get("best_move"):
                     best_move_overall = tt_entry["best_move"]
 
@@ -193,7 +194,7 @@ class MinimaxAI:
             raise TimeoutException()
 
         # 2) Transposition Table lookup
-        hash_key = board.fen()
+        hash_key = chess.polyglot.zobrist_hash(board)
         tt_entry = self.tt.get(hash_key)
 
         if tt_entry and tt_entry["depth"] >= depth:
@@ -425,13 +426,15 @@ class MinimaxAI:
             value = piece_values.get(piece_type, 0) 
             pst = psts[piece_type]                  
 
+            # White uses the mirrored square to match top-down PST array
             for sq in board.pieces(piece_type, chess.WHITE):
                 score += value       
-                score += pst[sq]     
+                mirrored_sq = chess.square_mirror(sq)
+                score += pst[mirrored_sq]     
 
+            # Black uses the raw square
             for sq in board.pieces(piece_type, chess.BLACK):
                 score -= value       
-                mirrored_sq = chess.square_mirror(sq)
-                score -= pst[mirrored_sq] 
+                score -= pst[sq] 
             
         return score

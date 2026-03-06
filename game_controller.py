@@ -1,7 +1,9 @@
 import pygame
 import chess
+import threading
 
 AI_MOVE_EVENT = pygame.USEREVENT + 1
+AI_MOVE_CALCULATED_EVENT = pygame.USEREVENT + 2
 
 # Chess.com-style material / captured pieces UI helpers
 PIECE_VALUES = {
@@ -64,6 +66,14 @@ class GameController:
     def _to_chess_square(self, row, col):
         if row is None or col is None: return None
         return chess.square(col, 7 - row)
+    
+    def _run_ai_thread(self, current_ai, board_copy):
+        """Runs in a background thread to prevent freezing the UI."""
+        move = current_ai.get_best_move(board_copy, time_limit=3.0)
+        
+        # Post the result back to the main thread's event queue
+        event = pygame.event.Event(AI_MOVE_CALCULATED_EVENT, {'move': move})
+        pygame.event.post(event)
 
     def _to_ui_coord(self, square):
         if square is None: return None
@@ -111,19 +121,39 @@ class GameController:
             return self._on_mouse_up(event)
             
         elif event.type == AI_MOVE_EVENT:
-            if self.waiting_for_ai:
-                pygame.time.set_timer(AI_MOVE_EVENT, 0) # Turn off the timer
+            # Added a flag check to prevent duplicate threads if the timer double-fired
+            if self.waiting_for_ai and not getattr(self, '_ai_calculating', False):
+                pygame.time.set_timer(AI_MOVE_EVENT, 0) # Turn off the initial delay timer
+                self._ai_calculating = True
                 
                 # Fetch the correct AI
                 current_ai = self.white_ai if self.board.turn == chess.WHITE else self.black_ai
                 
                 if current_ai:
-                    move = current_ai.get_best_move(self.board, time_limit=3.0)
-                    if move:
-                        self._apply_move(move)
-                        
-                self.waiting_for_ai = False
-                self._check_ai_turn() # Check if the *next* player is also AI!
+                    # Create a deep copy of the board for the thread to safely manipulate
+                    board_copy = self.board.copy()
+                    
+                    # Spawn the background thread
+                    ai_thread = threading.Thread(
+                        target=self._run_ai_thread, 
+                        args=(current_ai, board_copy)
+                    )
+                    ai_thread.daemon = True # Allows the thread to die if the main program exits
+                    ai_thread.start()
+                    
+                    # NOTE: We leave self.waiting_for_ai = True here so the animation keeps playing
+
+        # NEW: Listen for the thread to finish
+        elif event.type == AI_MOVE_CALCULATED_EVENT:
+            self._ai_calculating = False
+            move = event.move
+            
+            # Validate the move to protect against race conditions and phantom restart threads
+            if move and move in self.board.legal_moves:
+                self._apply_move(move)
+                
+            self.waiting_for_ai = False
+            self._check_ai_turn() # Check if the *next* player is also AI
 
     def draw(self, screen, draw_board_func, draw_pieces_func, draw_players_func, font, options_icon, options_rect, names_and_icons):
         ui_board = self._get_ui_board()
@@ -132,10 +162,20 @@ class GameController:
         if self.last_move:
             src = self._to_ui_coord(self.last_move.from_square)
             dst = self._to_ui_coord(self.last_move.to_square)
-            ui_last_move = (src, dst, None) 
+            ui_last_move = (src, dst, None)
+
+        ai_thinking_color = None
+        if self.waiting_for_ai:
+            ai_thinking_color = self.board.turn
 
         draw_board_func(screen, self.highlight_squares, self.layout, last_move=ui_last_move)
-        draw_players_func(screen, self.layout, font, *names_and_icons)
+        draw_players_func(
+            screen,
+            self.layout,
+            font,
+            *names_and_icons,
+            ai_thinking_color=ai_thinking_color
+        )
         screen.blit(options_icon, options_rect)
 
         # Chess.com-style captured pieces + material advantage (right side)
