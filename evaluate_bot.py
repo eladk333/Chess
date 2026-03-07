@@ -1,72 +1,111 @@
 import chess
+import chess.engine
+import chess.pgn
 import time
-from ai.minmax import MinimaxAI  
+from ai.minmax import MinimaxAI
 
-def run_test_suite():
-    # Format: "Test Name": ("FEN String", "Expected Best Move", Depth to test)
-    test_positions = {
-        "1. Mate in 1 (Fixed)": (
-            "6k1/8/6K1/8/8/8/8/R7 w - - 0 1", # Rook is now on a1, safely protected
-            "a1a8", 
-            3
-        ),
-        "2. Take Free Queen": (
-            "k7/8/8/3q4/8/8/8/3R2K1 w - - 0 1", 
-            "d1d5", 
-            3
-        ),
-        "3. Avoid Checkmate": (
-            "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2", 
-            "d8h4", # Black can mate white in 1 move here
-            3
-        ),
-        "4. Mate in 2 (Queen Sacrifice)": (
-            "r1bq2r1/b4pk1/p1pp1p2/1p2pP2/1P2P1PB/3P4/1PPQ2P1/R3K2R w KQ - 0 1", 
-            "d2h6", # Queen sacrifices herself so Bishop can mate on the next turn
-            4      # Needs depth 4 to see the full sequence
-        )
-    }
+# --- CONFIGURATION ---
+STOCKFISH_PATH = r"C:\Users\elad.k.int\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe"
 
-    print("========================================")
-    print(" CHESS ENGINE TACTICAL EVALUATION SUITE ")
-    print("========================================\n")
+TARGET_ELO = 1700
+NUM_GAMES = 2
+TIME_LIMIT_PER_MOVE = 10
+OUTPUT_FILE = "saved_games.pgn"  # Back to PGN!
 
-    total_passed = 0
-    total_time = 0
-
-    for name, (fen, expected_move, depth) in test_positions.items():
-        print(f"Testing: {name} (Depth {depth})...")
+def play_game(custom_ai, sf_engine, ai_is_white):
+    """Plays a single game between Custom AI and Stockfish and returns the final board."""
+    board = chess.Board()
+    
+    while not board.is_game_over():
+        is_custom_ai_turn = (board.turn == chess.WHITE and ai_is_white) or \
+                            (board.turn == chess.BLACK and not ai_is_white)
         
-        board = chess.Board(fen)
-        
-        # Instantiate the engine with the specific depth for this test
-        engine = MinimaxAI(depth=depth)
-        
-        # Start the timer
-        start_time = time.time()
-        
-        # Ask the engine for the move
-        best_move = engine.get_best_move(board)
-        
-        # Stop the timer
-        end_time = time.time()
-        time_taken = end_time - start_time
-        total_time += time_taken
-        
-        # Convert the move to a string to compare
-        move_str = best_move.uci() if best_move else "None"
-        
-        if move_str == expected_move:
-            print(f"  [PASS] Found {move_str} in {time_taken:.3f} seconds.")
-            total_passed += 1
+        if is_custom_ai_turn:
+            # Custom AI's turn
+            move = custom_ai.get_best_move(board, time_limit=TIME_LIMIT_PER_MOVE)
         else:
-            print(f"  [FAIL] Expected {expected_move}, but engine played {move_str}. Time: {time_taken:.3f} seconds.")
-        print("-" * 40)
+            # Stockfish's turn
+            result = sf_engine.play(board, chess.engine.Limit(time=TIME_LIMIT_PER_MOVE))
+            move = result.move
+            
+        board.push(move)
+        
+    return board
 
-    print("\n========================================")
-    print(f" RESULTS: {total_passed} / {len(test_positions)} Passed")
-    print(f" TOTAL CALCULATION TIME: {total_time:.3f} seconds")
-    print("========================================")
+def run_tournament():
+    print(f"Starting {NUM_GAMES}-game match against Stockfish at {TARGET_ELO} Elo...")
+    print(f"Time limit per move: {TIME_LIMIT_PER_MOVE}s")
+    print(f"Games will be saved to: {OUTPUT_FILE}\n")
+    
+    my_ai = MinimaxAI()
+    
+    try:
+        sf_engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
+    except FileNotFoundError:
+        print(f"Error: Stockfish not found at {STOCKFISH_PATH}. Please check the path.")
+        return
+
+    # Configure Stockfish strength
+    sf_engine.configure({"UCI_LimitStrength": True, "UCI_Elo": TARGET_ELO})
+    
+    # Score tracking
+    ai_wins = 0
+    ai_losses = 0
+    draws = 0
+    
+    # Clear previous contents of the save file
+    with open(OUTPUT_FILE, "w") as f:
+        f.write("")
+    
+    for i in range(1, NUM_GAMES + 1):
+        # AI is ALWAYS Black now
+        ai_is_white = False
+        color_str = "Black"
+        
+        print(f"Game {i}/{NUM_GAMES} - MinimaxAI playing as {color_str}...", end="", flush=True)
+        
+        start_time = time.time()
+        final_board = play_game(my_ai, sf_engine, ai_is_white)
+        duration = time.time() - start_time
+        
+        result = final_board.result()
+        
+        # Calculate winner
+        if result == '1/2-1/2':
+            winner = "Draw"
+            draws += 1
+        elif (result == '1-0' and ai_is_white) or (result == '0-1' and not ai_is_white):
+            winner = "MinimaxAI Won!"
+            ai_wins += 1
+        else:
+            winner = "Stockfish Won"
+            ai_losses += 1
+            
+        print(f" Result: {result} ({winner}) in {duration:.1f}s")
+        
+        # --- FIXED PGN EXPORT LOGIC ---
+        game = chess.pgn.Game()  # Start a fresh game from the starting position
+        game.headers["Event"] = f"MinimaxAI Match - Game {i}"
+        game.headers["White"] = f"Stockfish ({TARGET_ELO})"
+        game.headers["Black"] = "MinimaxAI"
+        game.headers["Result"] = result
+        
+        # Add the entire sequence of played moves to the game
+        game.add_line(final_board.move_stack)
+        
+        with open(OUTPUT_FILE, "a") as f:
+            print(game, file=f, end="\n\n") # Directly print the game object to the file
+        
+    sf_engine.quit()
+    
+    # Print final scorecard
+    print("\n" + "="*30)
+    print("TOURNAMENT RESULTS")
+    print("="*30)
+    print(f"MinimaxAI Wins:  {ai_wins}")
+    print(f"Stockfish Wins:  {ai_losses}")
+    print(f"Draws:           {draws}")
+    print("="*30 + "\n")
 
 if __name__ == "__main__":
-    run_test_suite()
+    run_tournament()

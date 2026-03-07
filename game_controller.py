@@ -69,7 +69,7 @@ class GameController:
     
     def _run_ai_thread(self, current_ai, board_copy):
         """Runs in a background thread to prevent freezing the UI."""
-        move = current_ai.get_best_move(board_copy, time_limit=3.0)
+        move = current_ai.get_best_move(board_copy, time_limit=5.0)
         
         # Post the result back to the main thread's event queue
         event = pygame.event.Event(AI_MOVE_CALCULATED_EVENT, {'move': move})

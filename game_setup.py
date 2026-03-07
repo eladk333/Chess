@@ -32,10 +32,10 @@ def load_game_assets(mode="pvp", player_color="white", ai_setup=None):
     layout = BoardArea(top=60, bottom=60, left=0, right=0, flipped=(mode == "pve" and player_color == "black"))
     
     board = chess.Board()
-    # board = chess.Board("1k1r4/3r4/8/4K3/8/8/8/8 w - - 0 1") # 2 rooks
+    #board = chess.Board("1k1r4/3r4/8/4K3/8/8/8/8 w - - 0 1") # 2 rooks
     #board = chess.Board("3r4/8/3k4/8/8/3K4/8/8 w - - 0 1") # 1 rook
     #board = chess.Board("8/3K4/4P3/8/8/8/6k1/7q w - - 0 1") # Pawn about to promot
-    board = chess.Board("8/ppk5/3p4/3b4/6B1/5KP1/2P4P/8 w - - 0 1") # Needs to push pawns endgame
+    #board = chess.Board("8/ppk5/3p4/3b4/6B1/5KP1/2P4P/8 w - - 0 1") # Needs to push pawns endgame
     images = load_piece_images()
     icons = load_player_icons()
 
