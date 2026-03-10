@@ -1,22 +1,13 @@
-# Chess Game with a Minimax AI
+# Chess Game and a Minimax model inspired by the course Artificial Intelligence (895570-01)
 
-A chess game implemented in **Python** using **Pygame** and **python-chess**, featuring a custom Minimax-based chess engine.
+The model is implemented as Iterative deepening with Alpha-Beta pruning, and also uses Transposition table with Zobrist hashing and a Quiescence search algorithm.
 
-This project was inspired by concepts taught in the course **Artificial Intelligence (895570-01)**.
-
-## AI Engine
-
-The chess engine uses:
-
-- **Minimax search**
-- **Alpha-Beta pruning**
-- **Iterative deepening**
-- **Transposition table with Zobrist hashing**
-- **Quiescence search**
-
-## Installation
-
-Install the required dependencies:
-
+## To install requirements
 ```bash
 pip install -r requirements.txt
+```
+
+## To start the game
+```bash
+python main.py
+```
