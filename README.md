@@ -1,6 +1,6 @@
 # Chess Game and a Minimax model insipred by the course Artificial Intelligence (895570-01)
 
-## The model is implemeted as Iterative deepening with Alpha-Beta pruning, and also uses Transposition table with Zobrist hashing and a Quiescence search algorithm.
+The model is implemeted as Iterative deepening with Alpha-Beta pruning, and also uses Transposition table with Zobrist hashing and a Quiescence search algorithm.
 
 ## To install requirements
 ```bash
