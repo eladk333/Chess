@@ -1,18 +1,13 @@
-# How it works pretty much
+# Chess Game and a Minimax model insipred by the course Artificial Intelligence (895570-01)
 
-## To train the model  
+## The model is implemeted as Iterative deepening with Alpha-Beta pruning, and also uses Transposition table with Zobrist hashing and a Quiescence search algorithm.
+
+## To install requirements
 ```bash
-python3 -m ml.trainer
+pip install -r requirements.txt
 ```
-This will create `chess_model_best.pt` which contains the trained neural network. Pretty much the network just take a board position and returns a score that estimate how good the position is for the current player.
 
-## To avaluate how good the model is
+## To start the game
 ```bash
-python3 -m ml.evaluate_model
-```
-It plays vs a random move player and returns how many wins draws and accuarcy of the model.
-
-## To just play the game run 
-```bash
-python3 main.py 
+python main.py
 ```

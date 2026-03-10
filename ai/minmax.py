@@ -12,6 +12,17 @@ class MinimaxAI:
         self.depth = depth
         self.tt = {} # The Transposition Table
         self.stats = {}
+        
+        # NEW: Heuristic Tables for Move Ordering
+        self.killer_moves = [[None, None] for _ in range(64)] # Stores 2 killer moves per depth up to 64
+        self.history = {} # Stores history scores for (from_square, to_square)
+
+    def has_non_pawn_material(self, board: chess.Board) -> bool:
+        """Checks if the side to move has pieces other than pawns/king to avoid Zugzwang in NMP."""
+        for piece_type in [chess.KNIGHT, chess.BISHOP, chess.ROOK, chess.QUEEN]:
+            if board.pieces(piece_type, board.turn):
+                return True
+        return False
     
     # Pawns: Encouraged to advance and control the center.
     PAWN_PST = [
@@ -169,81 +180,73 @@ class MinimaxAI:
 
         return best_move_overall
 
-    def minimax(
-        self,
-        board: chess.Board,
-        depth: int,
-        alpha: float,
-        beta: float,
-        is_maximizing: bool,
-        start_time: float,
-        time_limit: float
-    ) -> float:
-        """
-        Minimax algorithm with Alpha-Beta pruning and Transposition Table integration.
-        Stats tracked:
-        - nodes: minimax nodes visited
-        - tt_hits: TT entries reused
-        - tt_cutoffs: cutoffs caused by TT bounds
-        - tt_stores: TT stores performed
-        """
-        # Stats: count this node
+    def minimax(self, board: chess.Board, depth: int, alpha: float, beta: float, is_maximizing: bool, start_time: float, time_limit: float) -> float:
         self.stats["nodes"] += 1
 
-        # 1) Timeout check
         if time.time() - start_time > time_limit:
             raise TimeoutException()
 
-        # 2) Transposition Table lookup
         hash_key = chess.polyglot.zobrist_hash(board)
         tt_entry = self.tt.get(hash_key)
 
         if tt_entry and tt_entry["depth"] >= depth:
             self.stats["tt_hits"] += 1
-
             flag = tt_entry["flag"]
             score = tt_entry["score"]
 
-            if flag == "EXACT":
-                return score
-            elif flag == "LOWERBOUND":
-                alpha = max(alpha, score)
-            elif flag == "UPPERBOUND":
-                beta = min(beta, score)
+            if flag == "EXACT": return score
+            elif flag == "LOWERBOUND": alpha = max(alpha, score)
+            elif flag == "UPPERBOUND": beta = min(beta, score)
+            if alpha >= beta: return score
 
-            if alpha >= beta:                
-                return score  # prune
-
-        # 3) Base cases
         if board.is_game_over():
             return self.evaluate(board)
 
         if depth == 0:
             return self.quiescence_search(board, alpha, beta, is_maximizing, start_time, time_limit)
 
+        # NEW: Null Move Pruning (NMP)
+        if depth >= 3 and not board.is_check() and self.has_non_pawn_material(board):
+            R = 2 # Reduction factor
+            board.push(chess.Move.null())
+            try:
+                null_score = self.minimax(board, depth - 1 - R, alpha, beta, not is_maximizing, start_time, time_limit)
+            finally:
+                board.pop()
+            
+            if is_maximizing and null_score >= beta:
+                return beta
+            if not is_maximizing and null_score <= alpha:
+                return alpha
+
         original_alpha = alpha
         original_beta = beta
         best_move_this_node = None
-
         tt_best_move = tt_entry["best_move"] if tt_entry else None
 
-        # 4) Move generation + ordering (TT best move first, then MVV-LVA)
         moves = list(board.legal_moves)
 
         def get_move_score(m: chess.Move) -> int:
             if tt_best_move is not None and m == tt_best_move:
                 return 1_000_000
-            return self.score_move(board, m)
+            return self.score_move(board, m, depth) # Passed current depth
 
         moves.sort(key=get_move_score, reverse=True)
 
-        # 5) Alpha-beta search
         if is_maximizing:
             best_val = -math.inf
+            moves_searched = 0
             for move in moves:
                 board.push(move)
+                is_cap = board.is_capture(move)
                 try:
-                    score = self.minimax(board, depth - 1, alpha, beta, False, start_time, time_limit)
+                    # NEW: Late Move Reductions (LMR)
+                    if moves_searched >= 4 and depth >= 3 and not is_cap and not board.is_check():
+                        score = self.minimax(board, depth - 2, alpha, beta, False, start_time, time_limit)
+                        if score > alpha: # Requires a full re-search
+                            score = self.minimax(board, depth - 1, alpha, beta, False, start_time, time_limit)
+                    else:
+                        score = self.minimax(board, depth - 1, alpha, beta, False, start_time, time_limit)
                 finally:
                     board.pop()
 
@@ -252,14 +255,30 @@ class MinimaxAI:
                     best_move_this_node = move
 
                 alpha = max(alpha, best_val)
+                moves_searched += 1
+
                 if alpha >= beta:
+                    # NEW: Store Killer & History moves on a cutoff (if it's a quiet move)
+                    if not is_cap:
+                        if depth < len(self.killer_moves) and move != self.killer_moves[depth][0]:
+                            self.killer_moves[depth][1] = self.killer_moves[depth][0]
+                            self.killer_moves[depth][0] = move
+                        self.history[(move.from_square, move.to_square)] = self.history.get((move.from_square, move.to_square), 0) + (depth * depth)
                     break
         else:
             best_val = math.inf
+            moves_searched = 0
             for move in moves:
                 board.push(move)
+                is_cap = board.is_capture(move)
                 try:
-                    score = self.minimax(board, depth - 1, alpha, beta, True, start_time, time_limit)
+                    # NEW: Late Move Reductions (LMR)
+                    if moves_searched >= 4 and depth >= 3 and not is_cap and not board.is_check():
+                        score = self.minimax(board, depth - 2, alpha, beta, True, start_time, time_limit)
+                        if score < beta: # Requires a full re-search
+                            score = self.minimax(board, depth - 1, alpha, beta, True, start_time, time_limit)
+                    else:
+                        score = self.minimax(board, depth - 1, alpha, beta, True, start_time, time_limit)
                 finally:
                     board.pop()
 
@@ -268,40 +287,46 @@ class MinimaxAI:
                     best_move_this_node = move
 
                 beta = min(beta, best_val)
+                moves_searched += 1
+
                 if alpha >= beta:
+                    # NEW: Store Killer & History moves on a cutoff (if it's a quiet move)
+                    if not is_cap:
+                        if depth < len(self.killer_moves) and move != self.killer_moves[depth][0]:
+                            self.killer_moves[depth][1] = self.killer_moves[depth][0]
+                            self.killer_moves[depth][0] = move
+                        self.history[(move.from_square, move.to_square)] = self.history.get((move.from_square, move.to_square), 0) + (depth * depth)
                     break
 
-        # 6) Transposition Table store (bound type depends on how alpha/beta changed)
         flag = "EXACT"
-        if best_val <= original_alpha:
-            flag = "UPPERBOUND"
-        elif best_val >= original_beta:
-            flag = "LOWERBOUND"
+        if best_val <= original_alpha: flag = "UPPERBOUND"
+        elif best_val >= original_beta: flag = "LOWERBOUND"
 
         self.tt[hash_key] = {
-            "depth": depth,
-            "score": best_val,
-            "flag": flag,
-            "best_move": best_move_this_node,
+            "depth": depth, "score": best_val, "flag": flag, "best_move": best_move_this_node,
         }        
 
         return best_val
 
     def quiescence_search(self, board: chess.Board, alpha: float, beta: float, is_maximizing: bool, start_time: float, time_limit: float) -> float:
-        """
-        A restricted search that only explores captures to resolve the Horizon Effect.
-        """        
         if time.time() - start_time > time_limit:
             raise TimeoutException()
 
-        # 1. The "Stand-Pat" Score: Evaluating the board as it currently is.
         stand_pat = self.evaluate(board)
-        
-        # 2. Base case: If the game is already over, just return the score
         if board.is_game_over():
             return stand_pat
 
-        # 3. Stand-Pat Pruning
+        # NEW: Delta Pruning
+        SAFETY_MARGIN = 200
+        QUEEN_VALUE = 900
+        if is_maximizing:
+            if stand_pat + QUEEN_VALUE + SAFETY_MARGIN < alpha:
+                return alpha
+        else:
+            if stand_pat - QUEEN_VALUE - SAFETY_MARGIN > beta:
+                return beta
+
+        # Stand-Pat Pruning
         if is_maximizing:
             if stand_pat >= beta:
                 return beta 
@@ -313,11 +338,9 @@ class MinimaxAI:
             if beta > stand_pat:
                 beta = stand_pat
 
-        # 4. Generate and sort ONLY capture moves
         captures = list(board.generate_legal_captures())
-        captures.sort(key=lambda m: self.score_move(board, m), reverse=True)
+        captures.sort(key=lambda m: self.score_move(board, m, 0), reverse=True) # Updated to pass depth=0
 
-        # 5. Search the captures with try...finally block
         if is_maximizing:
             max_eval = stand_pat
             for move in captures:
@@ -326,13 +349,11 @@ class MinimaxAI:
                     score = self.quiescence_search(board, alpha, beta, False, start_time, time_limit)
                 finally:
                     board.pop()
-
                 max_eval = max(max_eval, score)
                 alpha = max(alpha, score)
                 if beta <= alpha:
                     break 
             return max_eval
-            
         else:
             min_eval = stand_pat
             for move in captures:
@@ -341,50 +362,49 @@ class MinimaxAI:
                     score = self.quiescence_search(board, alpha, beta, True, start_time, time_limit)
                 finally:
                     board.pop()
-
                 min_eval = min(min_eval, score)
                 beta = min(beta, score)
                 if beta <= alpha:
                     break 
             return min_eval
 
-    def score_move(self, board: chess.Board, move: chess.Move) -> int:
+    def score_move(self, board: chess.Board, move: chess.Move, depth: int = 0) -> int:
         """
-        Scores a move for move ordering, primarily using MVV-LVA.
+        Scores a move for move ordering, using MVV-LVA for captures, 
+        and Killer/History heuristics for quiet moves.
         """
         score = 0
-        
-        piece_values = {
-            chess.PAWN: 100,
-            chess.KNIGHT: 300,
-            chess.BISHOP: 300,
-            chess.ROOK: 500,
-            chess.QUEEN: 900,
-            chess.KING: 0
-        }
+        piece_values = {chess.PAWN: 100, chess.KNIGHT: 300, chess.BISHOP: 300, chess.ROOK: 500, chess.QUEEN: 900, chess.KING: 0}
 
         # 1. Promotions (High priority)
         if move.promotion:
-            score += piece_values.get(move.promotion, 0)
+            score += piece_values.get(move.promotion, 0) + 10000
 
         # 2. Captures (MVV-LVA)
         if board.is_capture(move):
             attacker_piece = board.piece_at(move.from_square)
             victim_piece = board.piece_at(move.to_square)
             
-            # Standard capture
             if victim_piece and attacker_piece:
                 attacker_val = piece_values.get(attacker_piece.piece_type, 0)
                 victim_val = piece_values.get(victim_piece.piece_type, 0)
+                score += 10000 + (10 * victim_val) - attacker_val
                 
-                score += 10 * victim_val - attacker_val
-                
-            # En Passant
             elif board.is_en_passant(move):
-                score += 10 * 100 - 100
+                score += 10000 + (10 * 100) - 100
+        else:
+            # 3. Quiet Moves (Killer & History)
+            if depth < len(self.killer_moves):
+                if move == self.killer_moves[depth][0]:
+                    score += 9000
+                elif move == self.killer_moves[depth][1]:
+                    score += 8000
+            
+            # History score (scaled down so it doesn't override captures/killers)
+            score += self.history.get((move.from_square, move.to_square), 0) // 100
 
         return score
-
+    
     def evaluate(self, board: chess.Board) -> float:
         """
         Evaluates the board based on material advantage AND piece-square tables.
