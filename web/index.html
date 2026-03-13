@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Chess</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="script.js" defer></script>
+</head>
+
+<body>
+    <div id="game-container">
+        <!-- Player Top -->
+        <div class="player-info top-player">
+            <div class="player-details">
+                <div class="avatar" id="top-avatar"></div>
+                <div class="player-name" id="top-char-name">Black Player</div>
+            </div>
+            <div class="ability-container hidden" id="top-ability-container">
+                <button class="ability-btn" id="top-ability-btn">Ability</button>
+                <div class="ability-status" id="top-ability-status"></div>
+            </div>
+            <div class="capture-bar top-captures" id="top-captures"></div>
+        </div>
+
+        <!-- Chess Board -->
+        <div id="board"></div>
+
+        <!-- Player Bottom -->
+        <div class="player-info bottom-player">
+            <div class="player-details">
+                <div class="avatar" id="bottom-avatar"></div>
+                <div class="player-name" id="bottom-char-name">White Player</div>
+            </div>
+            <div class="ability-container hidden" id="bottom-ability-container">
+                <button class="ability-btn" id="bottom-ability-btn">Ability</button>
+                <div class="ability-status" id="bottom-ability-status"></div>
+            </div>
+            <div class="capture-bar bottom-captures" id="bottom-captures"></div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="hidden">
+        <div class="modal-content">
+            <h2 id="game-over-message">Checkmate! White wins.</h2>
+            <button id="restart-btn" class="menu-btn">Play Again</button>
+        </div>
+    </div>
+
+    <!-- Character Selection Modal -->
+    <div id="char-select-modal">
+        <div class="modal-content large-modal">
+            <h2>Select Your Characters</h2>
+
+            <div class="select-row">
+                <div class="select-col">
+                    <h3>White Player</h3>
+                    <div class="char-options" id="white-char-options">
+                        <div class="char-card selected" data-char="none">
+                            <h4>Standard</h4>
+                            <p>No special abilities.</p>
+                        </div>
+                        <div class="char-card" data-char="epstein">
+                            <h4>Epstein</h4>
+                            <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
+                                buy an enemy piece.</p>
+                        </div>
+                        <div class="char-card" data-char="bibi">
+                            <h4>Big Yahu</h4>
+                            <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 20
+                                moves to charge.</p>
+                        </div>
+                        <div class="char-card" data-char="diddy">
+                            <h4>Diddy</h4>
+                            <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
+                                more square. Cooldown: 10 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="kirk">
+                            <h4>Charlie Kirk</h4>
+                            <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
+                                cooldown 5 moves.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="select-col">
+                    <h3>Black Player</h3>
+                    <div class="char-options" id="black-char-options">
+                        <div class="char-card selected" data-char="none">
+                            <h4>Standard</h4>
+                            <p>No special abilities.</p>
+                        </div>
+                        <div class="char-card" data-char="epstein">
+                            <h4>Epstein</h4>
+                            <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
+                                buy an enemy piece.</p>
+                        </div>
+                        <div class="char-card" data-char="bibi">
+                            <h4>Big Yahu</h4>
+                            <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 20
+                                moves to charge.</p>
+                        </div>
+                        <div class="char-card" data-char="diddy">
+                            <h4>Diddy</h4>
+                            <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
+                                more square. Cooldown: 10 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="kirk">
+                            <h4>Charlie Kirk</h4>
+                            <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
+                                cooldown 5 moves.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-game-btn" class="menu-btn">Start Game</button>
+        </div>
+    </div>
+</body>
+
+</html>

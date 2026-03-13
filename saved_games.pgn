@@ -1,0 +1,20 @@
+[Event "MinimaxAI Match - Game 1"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Stockfish (1700)"]
+[Black "MinimaxAI"]
+[Result "1-0"]
+
+1. e4 Nc6 2. Bb5 Nf6 3. Bxc6 dxc6 4. e5 Nd5 5. h3 Nf4 6. Qf3 Ng6 7. Qe3 Bf5 8. d3 f6 9. exf6 gxf6 10. Ne2 e5 11. g4 Qd5 12. Rg1 Bc5 13. Qh6 Qf3 14. Be3 Bb4+ 15. Nd2 Bxd2+ 16. Kxd2 Be6 17. Rac1 Bxa2 18. h4 Be6 19. h5 Bxg4 20. Rxg4 Qxg4 21. hxg6 Qxg6 22. Qh3 f5 23. Rg1 Qf6 24. Bg5 Qf8 25. d4 Qf7 26. dxe5 Qd5+ 27. Qd3 Qxe5 28. Nc3 Kf8 29. Qh3 c5 30. Re1 Qd4+ 31. Kc1 Kg8 32. Qxf5 Rf8 33. Qe6+ Rf7 34. Nd5 Qa4 35. Ne7+ Kf8 36. Bh6+ Rg7 37. Kb1 Qxc2+ 38. Kxc2 c4 39. Kc3 a6 40. Ng6+ hxg6 41. Qe8# 1-0
+
+[Event "MinimaxAI Match - Game 2"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "Stockfish (1700)"]
+[Black "MinimaxAI"]
+[Result "1-0"]
+
+1. e4 Nc6 2. Nc3 Nf6 3. d4 d5 4. e5 Ne4 5. h4 Nxc3 6. bxc3 Bf5 7. Rb1 Rb8 8. h5 Qd7 9. h6 gxh6 10. Be3 Qe6 11. Nh3 Bg7 12. Nf4 Qd7 13. Bd3 Be4 14. e6 fxe6 15. Bxe4 dxe4 16. Qg4 Kf7 17. Qh5+ Kf8 18. f3 exf3 19. O-O e5 20. Rxf3 exf4 21. Bxf4 Kg8 22. Bxh6 Bxd4+ 23. cxd4 Qxd4+ 24. Be3 Qf6 25. Rg3+ Kf8 26. Rf1 Qxf1+ 27. Kxf1 e6 28. Rf3+ Ke7 29. Rf7+ Ke8 30. Rg7+ Kd8 31. Qf7 Ne5 32. Bg5+ Kc8 33. Qxc7# 1-0
+

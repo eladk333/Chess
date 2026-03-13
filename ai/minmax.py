@@ -159,13 +159,13 @@ class MinimaxAI:
             # centipawns
             return f"{s/100.0:+.2f}"
 
-        # print(
-        #     f"[Minimax] depth={last_completed_depth}  "
-        #     f"positions={self.stats['nodes']}  "
-        #     f"transpositions={self.stats['tt_hits']}  "
-        #     f"move={best_move_overall.uci()}  "
-        #     f"eval={fmt_score(last_completed_score)}"
-        # )
+        print(
+            f"[Minimax] depth={last_completed_depth}  "
+            f"positions={self.stats['nodes']}  "
+            f"transpositions={self.stats['tt_hits']}  "
+            f"move={best_move_overall.uci()}  "
+            f"eval={fmt_score(last_completed_score)}"
+        )
 
         return best_move_overall
 

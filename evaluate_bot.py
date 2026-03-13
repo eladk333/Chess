@@ -5,7 +5,7 @@ import time
 from ai.minmax import MinimaxAI
 
 # --- CONFIGURATION ---
-STOCKFISH_PATH = r"C:\Users\elad.k.int\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe"
+STOCKFISH_PATH = r"C:\Users\eladk\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe"
 
 TARGET_ELO = 1700
 NUM_GAMES = 2
