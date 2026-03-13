@@ -49,7 +49,9 @@ const avatarMap = {
     'epstein': 'epstien.jpg',
     'bibi': 'bibi.png',
     'diddy': 'diddy.jpg',
-    'kirk': 'kirk.jfif'
+    'kirk': 'kirk.jfif',
+    'noam': 'virgin_human.png',
+    'shlomo': 'virgin_human.png'
 };
 
 function initGame() {
@@ -122,6 +124,8 @@ function formatCharName(charId) {
     if (charId === 'bibi') return 'Big Yahu';
     if (charId === 'diddy') return 'Diddy';
     if (charId === 'kirk') return 'Charlie Kirk';
+    if (charId === 'noam') return 'Noam';
+    if (charId === 'shlomo') return 'Shlomo';
     return '';
 }
 
@@ -648,6 +652,31 @@ function postMoveLogic(colorWhoMoved) {
             document.getElementById(`${side}-ability-btn`).classList.add('active');
         }
     });
+
+    // Noam says his thing after every move
+    if (chars[colorWhoMoved] === 'noam') {
+        const side = colorWhoMoved === 'w' ? 'bottom' : 'top';
+        const label = document.getElementById(`${side}-thinking`);
+        label.classList.add('noam-label');
+        label.textContent = 'I am Homo!';
+        label.style.display = 'inline';
+        setTimeout(() => {
+            label.style.display = 'none';
+            label.textContent = '🤔 Thinking...';
+            label.classList.remove('noam-label');
+        }, 2000);
+    }
+
+    // Shlomo wins for real after every move
+    if (chars[colorWhoMoved] === 'shlomo') {
+        setTimeout(() => {
+            const modal = document.getElementById('game-over-modal');
+            const msg = document.getElementById('game-over-message');
+            const winner = colorWhoMoved === 'w' ? 'White (Shlomo)' : 'Black (Shlomo)';
+            msg.textContent = `Checkmate! ${winner} wins!`;
+            modal.classList.remove('hidden');
+        }, 400);
+    }
 }
 
 function showValidMoves(sqId) {
@@ -910,7 +939,8 @@ function scheduleAiTurnIfNeeded() {
     if (playerTypes[color] === 'human') return;
 
     aiThinking = true;
-    document.getElementById('ai-thinking-indicator').style.display = 'block';
+    const side = color === 'w' ? 'bottom' : 'top';
+    document.getElementById(`${side}-thinking`).style.display = 'inline';
 
     // Small delay so the board renders before the AI freezes
     setTimeout(() => {
@@ -927,7 +957,9 @@ function scheduleAiTurnIfNeeded() {
 
 function handleAiResponse(e) {
     aiThinking = false;
-    document.getElementById('ai-thinking-indicator').style.display = 'none';
+    // Hide both thinking labels
+    document.getElementById('top-thinking').style.display = 'none';
+    document.getElementById('bottom-thinking').style.display = 'none';
 
     if (!e.data.success) {
         console.error('AI Error:', e.data.error);

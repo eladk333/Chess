@@ -462,18 +462,20 @@ body.hunting-mode .piece {
     border-color: #5c8a3f;
 }
 
-/* Thinking indicator */
-#ai-thinking-indicator {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    color: #fff;
-    padding: 10px 22px;
-    border-radius: 20px;
-    font-size: 0.95rem;
-    z-index: 999;
-    display: none;
+/* AI Thinking Label (inline, next to player name) */
+.ai-thinking-label {
+    font-size: 0.8rem;
+    color: #f0c040;
+    font-style: italic;
+    margin-left: 8px;
     animation: pulse 1.2s infinite;
+    white-space: nowrap;
+}
+
+.ai-thinking-label.noam-label {
+    font-size: 1.1rem;
+    color: #ff3333;
+    font-style: normal;
+    font-weight: bold;
+    animation: none;
 }
