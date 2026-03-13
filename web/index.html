@@ -49,6 +49,9 @@
         </div>
     </div>
 
+    <!-- AI Thinking Indicator -->
+    <div id="ai-thinking-indicator">🤔 AI is thinking...</div>
+
     <!-- Character Selection Modal -->
     <div id="char-select-modal">
         <div class="modal-content large-modal">
@@ -57,6 +60,14 @@
             <div class="select-row">
                 <div class="select-col">
                     <h3>White Player</h3>
+                    <div class="player-type-row">
+                        <label>Play as:</label>
+                        <select id="white-ai-type" class="ai-type-select">
+                            <option value="human">Human</option>
+                            <option value="random">Random AI</option>
+                            <option value="minimax">Minimax AI</option>
+                        </select>
+                    </div>
                     <div class="char-options" id="white-char-options">
                         <div class="char-card selected" data-char="none">
                             <h4>Standard</h4>
@@ -87,6 +98,14 @@
 
                 <div class="select-col">
                     <h3>Black Player</h3>
+                    <div class="player-type-row">
+                        <label>Play as:</label>
+                        <select id="black-ai-type" class="ai-type-select">
+                            <option value="human">Human</option>
+                            <option value="random">Random AI</option>
+                            <option value="minimax">Minimax AI</option>
+                        </select>
+                    </div>
                     <div class="char-options" id="black-char-options">
                         <div class="char-card selected" data-char="none">
                             <h4>Standard</h4>

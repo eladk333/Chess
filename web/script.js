@@ -23,6 +23,11 @@ const CAPTURE_ORDER = ['p', 'n', 'b', 'r', 'q'];
 let selectedSquare = null;
 let preventClick = false;
 
+// --- AI Player State ---
+const playerTypes = { w: 'human', b: 'human' }; // 'human', 'random', 'minimax'
+let aiWorker = null;
+let aiThinking = false;
+
 // --- Character & Ability State ---
 const chars = {
     w: 'none', // 'none', 'epstein', 'bibi', 'diddy', 'kirk'
@@ -66,11 +71,22 @@ function initGame() {
         
         chars.w = whiteChar;
         chars.b = blackChar;
+        playerTypes.w = document.getElementById('white-ai-type').value;
+        playerTypes.b = document.getElementById('black-ai-type').value;
         
         // Reset state
-        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false };
-        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false };
+        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
+        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
+        aiThinking = false;
         document.body.classList.remove('hunting-mode');
+        
+        // Setup AI Worker
+        if (aiWorker) { aiWorker.terminate(); aiWorker = null; }
+        const needsAI = playerTypes.w !== 'human' || playerTypes.b !== 'human';
+        if (needsAI) {
+            aiWorker = new Worker('aiWorker.js');
+            aiWorker.onmessage = handleAiResponse;
+        }
         
         // Update UI Text & Avatars
         document.getElementById('bottom-char-name').textContent = formatCharName(whiteChar);
@@ -86,6 +102,8 @@ function initGame() {
         game.reset();
         selectedSquare = null;
         updateBoard();
+        // Trigger AI if it's AI's turn first (white AI)
+        scheduleAiTurnIfNeeded();
     });
 
     document.getElementById('restart-btn').addEventListener('click', () => {
@@ -345,6 +363,8 @@ function updateAbilityDisplay() {
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
          updateEpsteinBuyTargets(turnColor);
     }
+
+    scheduleAiTurnIfNeeded();
 }
 
 function handleDragStart(e) {
@@ -387,8 +407,9 @@ function handleDrop(e) {
 
 function handleSquareClick(sqId) {
     if (preventClick || game.game_over()) return;
-    
+    // Block human input during AI turn
     const turnColor = game.turn();
+    if (playerTypes[turnColor] !== 'human' || aiThinking) return;
     const piece = game.get(sqId);
 
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
@@ -879,6 +900,90 @@ function playSound(hook) {
     // We could play actual audio here. 
     // Example: new Audio('assets/sounds/' + hook + '.mp3').play();
     console.log("Playing sound:", hook);
+}
+
+// ---- AI Turn Logic ----
+
+function scheduleAiTurnIfNeeded() {
+    const color = game.turn();
+    if (game.game_over() || aiThinking) return;
+    if (playerTypes[color] === 'human') return;
+
+    aiThinking = true;
+    document.getElementById('ai-thinking-indicator').style.display = 'block';
+
+    // Small delay so the board renders before the AI freezes
+    setTimeout(() => {
+        if (!aiWorker) return;
+        aiWorker.postMessage({
+            fen: game.fen(),
+            chars: chars,
+            abilities: abilities,
+            color: color,
+            aiType: playerTypes[color]
+        });
+    }, 300);
+}
+
+function handleAiResponse(e) {
+    aiThinking = false;
+    document.getElementById('ai-thinking-indicator').style.display = 'none';
+
+    if (!e.data.success) {
+        console.error('AI Error:', e.data.error);
+        return;
+    }
+
+    const { isAbility, move } = e.data.result;
+    const color = game.turn();
+
+    if (isAbility) {
+        executeAbilityMove(color, move);
+    } else {
+        // Standard chess.js move
+        const result = game.move({ from: move.from, to: move.to, promotion: 'q' });
+        if (result) {
+            postMoveLogic(color);
+            updateBoard();
+        }
+    }
+
+    // Schedule next AI turn if both players are AI
+    setTimeout(scheduleAiTurnIfNeeded, 500);
+}
+
+function executeAbilityMove(color, move) {
+    if (move.abilityType === 'bibi_ultimate') {
+        move.toKill.forEach(sq => game.remove(sq));
+        abilities[color].movesSinceLastUltimate = 0;
+        switchTurn();
+        postMoveLogic(color);
+        playSound('bibi_ultimate');
+        updateBoard();
+
+    } else if (move.abilityType === 'epstein_buy') {
+        game.remove(move.sq);
+        game.put({ type: move.piece.type, color: color }, move.sq);
+        abilities[color].capturedPoints = (abilities[color].capturedPoints || 0) - move.cost;
+        switchTurn();
+        postMoveLogic(color);
+        updateBoard();
+
+    } else if (move.abilityType === 'kirk_snipe') {
+        abilities[color].uniSniperActive = false;
+        abilities[color].movesSinceUniSniper = 0;
+        const newFen = movePieceInFen(game.fen(), move.from, move.to);
+        game.load(newFen);
+        postMoveLogic(color);
+        playSound('snipe');
+        updateBoard();
+
+    } else if (move.abilityType === 'diddy_baby_oil') {
+        abilities[color].babyOilActive = true;
+        abilities[color].movesSinceBabyOil = 0;
+        // After activating, AI still needs to make a standard move this turn
+        // so we just mark the trap and let the normal move follow
+    }
 }
 
 initGame();

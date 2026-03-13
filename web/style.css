@@ -428,3 +428,52 @@ body.hunting-mode .piece {
 .slipping {
     animation: slipAnimation 0.6s ease-out;
 }
+
+/* AI Type Selector */
+.player-type-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: #1a1a1a;
+    border-radius: 6px;
+}
+
+.player-type-row label {
+    font-size: 0.9rem;
+    color: #aaa;
+    white-space: nowrap;
+}
+
+.ai-type-select {
+    flex: 1;
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.ai-type-select:focus {
+    outline: none;
+    border-color: #5c8a3f;
+}
+
+/* Thinking indicator */
+#ai-thinking-indicator {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 10px 22px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    z-index: 999;
+    display: none;
+    animation: pulse 1.2s infinite;
+}
