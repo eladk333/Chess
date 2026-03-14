@@ -1,8 +1,10 @@
 :root {
     --light-square: #f0d9b5;
     --dark-square: #b58863;
-    --highlight: rgba(255, 255, 100, 0.6); /* Yellowish highlight */
-    --selected: rgba(20, 85, 30, 0.5); /* Greenish highlight for selected */
+    --highlight: rgba(255, 255, 100, 0.6);
+    /* Yellowish highlight */
+    --selected: rgba(20, 85, 30, 0.5);
+    /* Greenish highlight for selected */
     --board-size: 640px;
     --tile-size: calc(var(--board-size) / 8);
 }
@@ -69,7 +71,8 @@ body {
 .captured-piece {
     width: 20px;
     height: 20px;
-    margin-left: -5px; /* Overlap effect */
+    margin-left: -5px;
+    /* Overlap effect */
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -111,11 +114,21 @@ body {
 }
 
 /* Mixed colors for highlights based on the original squares */
-.square.light.highlight { background-color: #f6e674 !important; }
-.square.dark.highlight { background-color: #dac34b !important; }
+.square.light.highlight {
+    background-color: #f6e674 !important;
+}
 
-.square.light.selected { background-color: #d2e461 !important; }
-.square.dark.selected { background-color: #baca44 !important; }
+.square.dark.highlight {
+    background-color: #dac34b !important;
+}
+
+.square.light.selected {
+    background-color: #d2e461 !important;
+}
+
+.square.dark.selected {
+    background-color: #baca44 !important;
+}
 
 /* Valid move dot */
 .square.valid-move::after {
@@ -158,7 +171,8 @@ body {
 }
 
 .piece.dragging {
-    opacity: 0; /* Hide original while dragging */
+    opacity: 0;
+    /* Hide original while dragging */
 }
 
 .drag-clone {
@@ -218,7 +232,7 @@ body {
     padding: 30px 50px;
     border-radius: 8px;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
 }
 
 #game-over-message {
@@ -299,6 +313,9 @@ body {
     padding: 15px;
     cursor: pointer;
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
 }
 
 .char-card:hover {
@@ -310,8 +327,25 @@ body {
     background-color: #3a532a;
 }
 
+.char-card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.char-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #555;
+    border: none;
+    flex-shrink: 0;
+}
+
 .char-card h4 {
-    margin-bottom: 5px;
+    margin: 0;
     font-size: 1.1rem;
 }
 
@@ -393,15 +427,24 @@ body {
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 /* Epstein hunting mode cursor */
 body.hunting-mode .square {
     cursor: crosshair !important;
 }
+
 body.hunting-mode .piece {
     cursor: crosshair !important;
 }
@@ -420,9 +463,20 @@ body.hunting-mode .piece {
 
 /* Baby Oil slip animation */
 @keyframes slipAnimation {
-    0% { transform: scale(1); filter: sepia(0) hue-rotate(0deg); }
-    50% { transform: scale(1.1) skewX(10deg); filter: sepia(1) hue-rotate(180deg) brightness(1.5); }
-    100% { transform: scale(1) skewX(0deg); filter: sepia(0) hue-rotate(0deg); }
+    0% {
+        transform: scale(1);
+        filter: sepia(0) hue-rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.1) skewX(10deg);
+        filter: sepia(1) hue-rotate(180deg) brightness(1.5);
+    }
+
+    100% {
+        transform: scale(1) skewX(0deg);
+        filter: sepia(0) hue-rotate(0deg);
+    }
 }
 
 .slipping {

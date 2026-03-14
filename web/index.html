@@ -5,14 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Chess</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="script.js" defer></script>
 </head>
 
 <body>
     <div id="game-container">
-        <!-- Player Top -->
         <div class="player-info top-player">
             <div class="player-details">
                 <div class="avatar" id="top-avatar"></div>
@@ -26,10 +25,8 @@
             <div class="capture-bar top-captures" id="top-captures"></div>
         </div>
 
-        <!-- Chess Board -->
         <div id="board"></div>
 
-        <!-- Player Bottom -->
         <div class="player-info bottom-player">
             <div class="player-details">
                 <div class="avatar" id="bottom-avatar"></div>
@@ -51,7 +48,6 @@
         </div>
     </div>
 
-    <!-- Character Selection Modal -->
     <div id="char-select-modal">
         <div class="modal-content large-modal">
             <h2>Select Your Characters</h2>
@@ -69,36 +65,59 @@
                     </div>
                     <div class="char-options" id="white-char-options">
                         <div class="char-card selected" data-char="none">
-                            <h4>Standard</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/virgin_human.png" class="char-icon" alt="Standard">
+                                <h4>Standard</h4>
+                            </div>
                             <p>No special abilities.</p>
                         </div>
                         <div class="char-card" data-char="epstein">
-                            <h4>Epstein</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/epstien.jpg" class="char-icon" alt="Epstein">
+                                <h4>Epstein</h4>
+                            </div>
                             <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
                                 buy an enemy piece.</p>
                         </div>
                         <div class="char-card" data-char="bibi">
-                            <h4>Big Yahu</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/bibi.png" class="char-icon" alt="Big Yahu">
+                                <h4>Big Yahu</h4>
+                            </div>
                             <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 20
                                 moves to charge.</p>
                         </div>
                         <div class="char-card" data-char="diddy">
-                            <h4>Diddy</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/diddy.jpg" class="char-icon" alt="Diddy">
+                                <h4>Diddy</h4>
+                            </div>
                             <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
                                 more square. Cooldown: 10 moves.</p>
                         </div>
                         <div class="char-card" data-char="kirk">
-                            <h4>Charlie Kirk</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/kirk.jfif" class="char-icon" alt="Charlie Kirk">
+                                <h4>Charlie Kirk</h4>
+                            </div>
                             <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
                                 cooldown 5 moves.</p>
                         </div>
                         <div class="char-card" data-char="noam">
-                            <h4>Noam</h4>
-                            <p><strong>Ability: I am Homo</strong><br>No special chess abilities. But after every move, Noam proudly announces who he is.</p>
+                            <div class="char-card-header">
+                                <img src="assets/players/noam.jfif" class="char-icon" alt="Noam">
+                                <h4>Noam</h4>
+                            </div>
+                            <p>No special chess abilities. But after every
+                                move, Noam proudly announces who he is.</p>
                         </div>
                         <div class="char-card" data-char="shlomo">
-                            <h4>Shlomo</h4>
-                            <p><strong>Ability: Checkmate</strong><br>After every move Shlomo makes, the game declares checkmate. Just kidding. Or is it?</p>
+                            <div class="char-card-header">
+                                <img src="assets/players/shlomo.jfif" class="char-icon" alt="Shlomo">
+                                <h4>Shlomo</h4>
+                            </div>
+                            <p><strong>Ability: Being very very Handsome</strong><br>He died for our sins and came back
+                                to help and guide us at tikshove merkaz hovala</p>
                         </div>
                     </div>
                 </div>
@@ -115,36 +134,59 @@
                     </div>
                     <div class="char-options" id="black-char-options">
                         <div class="char-card selected" data-char="none">
-                            <h4>Standard</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/virgin_human.png" class="char-icon" alt="Standard">
+                                <h4>Standard</h4>
+                            </div>
                             <p>No special abilities.</p>
                         </div>
                         <div class="char-card" data-char="epstein">
-                            <h4>Epstein</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/epstien.jpg" class="char-icon" alt="Epstein">
+                                <h4>Epstein</h4>
+                            </div>
                             <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
                                 buy an enemy piece.</p>
                         </div>
                         <div class="char-card" data-char="bibi">
-                            <h4>Big Yahu</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/bibi.png" class="char-icon" alt="Big Yahu">
+                                <h4>Big Yahu</h4>
+                            </div>
                             <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 20
                                 moves to charge.</p>
                         </div>
                         <div class="char-card" data-char="diddy">
-                            <h4>Diddy</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/diddy.jpg" class="char-icon" alt="Diddy">
+                                <h4>Diddy</h4>
+                            </div>
                             <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
                                 more square. Cooldown: 10 moves.</p>
                         </div>
                         <div class="char-card" data-char="kirk">
-                            <h4>Charlie Kirk</h4>
+                            <div class="char-card-header">
+                                <img src="assets/players/kirk.jfif" class="char-icon" alt="Charlie Kirk">
+                                <h4>Charlie Kirk</h4>
+                            </div>
                             <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
                                 cooldown 5 moves.</p>
                         </div>
                         <div class="char-card" data-char="noam">
-                            <h4>Noam</h4>
-                            <p><strong>Ability: I am Homo</strong><br>No special chess abilities. But after every move, Noam proudly announces who he is.</p>
+                            <div class="char-card-header">
+                                <img src="assets/players/noam.jfif" class="char-icon" alt="Noam">
+                                <h4>Noam</h4>
+                            </div>
+                            <p>No special chess abilities. But after every
+                                move, Noam proudly announces who he is.</p>
                         </div>
                         <div class="char-card" data-char="shlomo">
-                            <h4>Shlomo</h4>
-                            <p><strong>Ability: Checkmate</strong><br>After every move Shlomo makes, the game declares checkmate. Just kidding. Or is it?</p>
+                            <div class="char-card-header">
+                                <img src="assets/players/shlomo.jfif" class="char-icon" alt="Shlomo">
+                                <h4>Shlomo</h4>
+                            </div>
+                            <p><strong>Ability: Being very very Handsome</strong><br>He died for our sins and came back
+                                to help and guide us at tikshove merkaz hovala</p>
                         </div>
                     </div>
                 </div>

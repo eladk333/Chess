@@ -50,14 +50,14 @@ const avatarMap = {
     'bibi': 'bibi.png',
     'diddy': 'diddy.jpg',
     'kirk': 'kirk.jfif',
-    'noam': 'virgin_human.png',
-    'shlomo': 'virgin_human.png'
+    'noam': 'noam.jfif',
+    'shlomo': 'shlomo.jfif'
 };
 
 function initGame() {
     createBoard();
     playSound('start'); // hypothetical game start sound
-    
+
     // Character Selection Logic
     document.querySelectorAll('.char-card').forEach(card => {
         card.addEventListener('click', (e) => {
@@ -70,18 +70,18 @@ function initGame() {
     document.getElementById('start-game-btn').addEventListener('click', () => {
         const whiteChar = document.querySelector('#white-char-options .char-card.selected').dataset.char;
         const blackChar = document.querySelector('#black-char-options .char-card.selected').dataset.char;
-        
+
         chars.w = whiteChar;
         chars.b = blackChar;
         playerTypes.w = document.getElementById('white-ai-type').value;
         playerTypes.b = document.getElementById('black-ai-type').value;
-        
+
         // Reset state
         abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
         abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
         aiThinking = false;
         document.body.classList.remove('hunting-mode');
-        
+
         // Setup AI Worker
         if (aiWorker) { aiWorker.terminate(); aiWorker = null; }
         const needsAI = playerTypes.w !== 'human' || playerTypes.b !== 'human';
@@ -89,14 +89,14 @@ function initGame() {
             aiWorker = new Worker('aiWorker.js');
             aiWorker.onmessage = handleAiResponse;
         }
-        
+
         // Update UI Text & Avatars
         document.getElementById('bottom-char-name').textContent = formatCharName(whiteChar);
         document.getElementById('top-char-name').textContent = formatCharName(blackChar);
-        
+
         document.getElementById('bottom-avatar').style.backgroundImage = `url('assets/players/${avatarMap[whiteChar]}')`;
         document.getElementById('top-avatar').style.backgroundImage = `url('assets/players/${avatarMap[blackChar]}')`;
-        
+
         setupAbilityUI('w', 'bottom');
         setupAbilityUI('b', 'top');
 
@@ -133,7 +133,7 @@ function setupAbilityUI(color, side) {
     const container = document.getElementById(`${side}-ability-container`);
     const btn = document.getElementById(`${side}-ability-btn`);
     const status = document.getElementById(`${side}-ability-status`);
-    
+
     container.classList.remove('hidden');
     btn.classList.remove('ready', 'active');
     btn.disabled = true;
@@ -165,10 +165,10 @@ function handleAbilityClick(color) {
 
     if (chars[color] === 'epstein') {
         abilities[color].huntingMode = !abilities[color].huntingMode;
-        
+
         const side = color === 'w' ? 'bottom' : 'top';
         const btn = document.getElementById(`${side}-ability-btn`);
-        
+
         if (abilities[color].huntingMode) {
             btn.classList.add('active');
             document.body.classList.add('hunting-mode');
@@ -186,26 +186,26 @@ function handleAbilityClick(color) {
         if (abilities[color].movesSinceBabyOil >= BABY_OIL_COOLDOWN && !abilities[color].babyOilActive) {
             abilities[color].babyOilActive = true;
             abilities[color].movesSinceBabyOil = 0;
-            
+
             const side = color === 'w' ? 'bottom' : 'top';
             const btn = document.getElementById(`${side}-ability-btn`);
             btn.classList.remove('ready');
             btn.classList.add('active');
             document.getElementById(`${side}-ability-status`).textContent = 'Trap Set!';
-            
+
             playSound('diddy'); // Generic sound hook
         }
     } else if (chars[color] === 'kirk') {
         if (abilities[color].movesSinceUniSniper >= UNI_SNIPER_COOLDOWN && !abilities[color].uniSniperActive) {
             abilities[color].uniSniperActive = true;
             abilities[color].movesSinceUniSniper = 0;
-            
+
             const side = color === 'w' ? 'bottom' : 'top';
             const btn = document.getElementById(`${side}-ability-btn`);
             btn.classList.remove('ready');
             btn.classList.add('active');
             document.getElementById(`${side}-ability-status`).textContent = 'Active!';
-            
+
             playSound('kirk');
         }
     }
@@ -218,13 +218,13 @@ function createBoard() {
             const squareEl = document.createElement('div');
             const isLight = (row + col) % 2 === 0;
             squareEl.className = `square ${isLight ? 'light' : 'dark'}`;
-            
+
             const file = String.fromCharCode(97 + col);
             const rank = 8 - row;
             const sqId = file + rank;
             squareEl.dataset.square = sqId;
             squareEl.id = sqId;
-            
+
             if (col === 0) {
                 const rankLabels = document.createElement('div');
                 rankLabels.className = 'coord coord-row';
@@ -237,11 +237,11 @@ function createBoard() {
                 fileLabels.textContent = file;
                 squareEl.appendChild(fileLabels);
             }
-            
+
             squareEl.addEventListener('dragover', (e) => e.preventDefault());
             squareEl.addEventListener('drop', handleDrop);
             squareEl.addEventListener('click', () => handleSquareClick(sqId));
-            
+
             boardEl.appendChild(squareEl);
         }
     }
@@ -271,30 +271,30 @@ function updateBoard(animateSlipForSquare = null) {
                 const file = String.fromCharCode(97 + col);
                 const rank = 8 - row;
                 const sqId = file + rank;
-                
+
                 const pieceEl = document.createElement('div');
                 pieceEl.className = 'piece';
-                
+
                 const colorStr = piece.color === 'w' ? 'white' : 'black';
                 const typeStr = pieceMap[piece.type];
-                
+
                 pieceEl.style.backgroundImage = `url('assets/${colorStr}-${typeStr}.png')`;
                 pieceEl.dataset.square = sqId;
                 pieceEl.dataset.color = piece.color;
-                
+
                 if (sqId === animateSlipForSquare) {
                     pieceEl.classList.add('slipping');
                 }
-                
+
                 pieceEl.draggable = true;
                 pieceEl.addEventListener('dragstart', handleDragStart);
                 pieceEl.addEventListener('dragend', handleDragEnd);
-                
+
                 document.getElementById(sqId).appendChild(pieceEl);
             }
         }
     }
-    
+
     updateCaptureBars();
     updateAbilityDisplay();
     checkGameOver();
@@ -305,14 +305,14 @@ function updateAbilityDisplay() {
         const side = color === 'w' ? 'bottom' : 'top';
         const char = chars[color];
         if (char === 'none') return;
-        
+
         const btn = document.getElementById(`${side}-ability-btn`);
         const status = document.getElementById(`${side}-ability-status`);
-        
+
         if (char === 'bibi') {
             const charge = abilities[color].movesSinceLastUltimate;
             status.textContent = `${charge}/${ULTIMATE_CHARGE_REQ} Moves`;
-            
+
             if (charge >= ULTIMATE_CHARGE_REQ) {
                 btn.disabled = false || game.turn() !== color;
                 btn.classList.add('ready');
@@ -365,7 +365,7 @@ function updateAbilityDisplay() {
 
     const turnColor = game.turn();
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
-         updateEpsteinBuyTargets(turnColor);
+        updateEpsteinBuyTargets(turnColor);
     }
 
     scheduleAiTurnIfNeeded();
@@ -375,34 +375,34 @@ function handleDragStart(e) {
     if (game.game_over()) return;
     const turnColor = game.turn();
     const pieceColor = e.target.dataset.color;
-    
+
     if (pieceColor !== turnColor || abilities[turnColor].huntingMode) {
         e.preventDefault();
         return;
     }
-    
+
     selectedSquare = e.target.dataset.square;
     e.dataTransfer.setData('text/plain', selectedSquare);
     e.dataTransfer.effectAllowed = 'move';
-    
+
     setTimeout(() => {
         e.target.classList.add('dragging');
     }, 0);
-    
+
     showValidMoves(selectedSquare);
 }
 
 function handleDragEnd(e) {
     e.target.classList.remove('dragging');
     clearValidMoves();
-    preventClick = true; 
+    preventClick = true;
     setTimeout(() => preventClick = false, 50);
 }
 
 function handleDrop(e) {
     e.preventDefault();
     if (!selectedSquare) return;
-    
+
     const targetSquare = e.currentTarget.dataset.square;
     attemptMove(selectedSquare, targetSquare);
     selectedSquare = null;
@@ -420,9 +420,9 @@ function handleSquareClick(sqId) {
         if (piece && piece.color !== turnColor && piece.type !== 'k') {
             attemptBuyPiece(turnColor, sqId, piece);
         }
-        return; 
+        return;
     }
-    
+
     if (selectedSquare) {
         const moveAttempt = attemptMove(selectedSquare, sqId);
         if (moveAttempt) {
@@ -431,7 +431,7 @@ function handleSquareClick(sqId) {
             return;
         }
     }
-    
+
     if (piece && piece.color === turnColor) {
         selectedSquare = sqId;
         clearValidMoves();
@@ -456,16 +456,16 @@ function coordsToSq(c, r) {
 
 function attemptMove(from, to) {
     if (from === to) return false;
-    
+
     const movingColor = game.turn();
     const enemyColor = movingColor === 'w' ? 'b' : 'w';
     const piece = game.get(from);
-    
+
     // Handle Kirk Uni Sniper Custom Capture BEFORE standard move gen
     if (chars[movingColor] === 'kirk' && abilities[movingColor].uniSniperActive && piece && piece.type === 'p') {
         const fromC = sqToCoords(from);
         const toC = sqToCoords(to);
-        
+
         if (Math.abs(toC.c - fromC.c) === 2 && Math.abs(toC.r - fromC.r) === 2) {
             const dir = movingColor === 'w' ? 1 : -1;
             if (toC.r - fromC.r === 2 * dir) {
@@ -473,17 +473,17 @@ function attemptMove(from, to) {
                 const interC = fromC.c + ((toC.c - fromC.c) / 2);
                 const interR = fromC.r + dir;
                 const interSq = coordsToSq(interC, interR);
-                
+
                 if (interSq && !game.get(interSq)) {
                     const targetPiece = game.get(to);
                     if (targetPiece && targetPiece.color !== movingColor && targetPiece.type !== 'k') {
                         // Execute Sniper Capture
                         abilities[movingColor].uniSniperActive = false;
-                        
+
                         // FEN manipulation teleport pawn
                         const newFen = movePieceInFen(game.fen(), from, to);
                         game.load(newFen);
-                        
+
                         postMoveLogic(movingColor);
                         playSound('snipe');
                         updateBoard();
@@ -493,10 +493,10 @@ function attemptMove(from, to) {
             }
         }
     }
-    
+
     const moves = game.moves({ verbose: true });
     let moveObj = null;
-    
+
     for (let m of moves) {
         if (m.from === from && m.to === to) {
             moveObj = { from, to, promotion: 'q' };
@@ -513,18 +513,18 @@ function attemptMove(from, to) {
         // Calculate direction vector
         const fromC = sqToCoords(from);
         const toC = sqToCoords(to);
-        
+
         // Calculate the raw delta
         const dc = toC.c - fromC.c;
         const dr = toC.r - fromC.r;
-        
+
         // Normalize direction mathematically (sign)
         const dirC = dc === 0 ? 0 : (dc > 0 ? 1 : -1);
         const dirR = dr === 0 ? 0 : (dr > 0 ? 1 : -1);
-        
+
         const slipTargetCoord = { c: toC.c + dirC, r: toC.r + dirR };
         const potentialSlipSq = coordsToSq(slipTargetCoord.c, slipTargetCoord.r);
-        
+
         if (potentialSlipSq) {
             // Is it empty? (No capturing on slip)
             const pieceAtSlip = game.get(potentialSlipSq);
@@ -537,15 +537,15 @@ function attemptMove(from, to) {
     if (slipSquare) {
         // We override the move entirely!
         game.move(moveObj);
-        
+
         // Manual slip FEN manipulation to bypass chess.js history/put bugs
         const fen = game.fen();
         const newFen = movePieceInFen(fen, to, slipSquare);
         game.load(newFen);
-        
+
         // Disable the trap
         abilities[enemyColor].babyOilActive = false;
-        
+
         postMoveLogic(movingColor);
         playSound('slip'); // generic slip
         updateBoard(slipSquare); // animate slipping piece
@@ -559,14 +559,14 @@ function attemptMove(from, to) {
             return true;
         }
     }
-    
+
     return false;
 }
 
 function movePieceInFen(fen, fromSq, toSq) {
     let tokens = fen.split(' ');
     let rows = tokens[0].split('/');
-    
+
     let grid = [];
     for (let r = 0; r < 8; r++) {
         let rowGrid = [];
@@ -582,16 +582,16 @@ function movePieceInFen(fen, fromSq, toSq) {
         }
         grid.push(rowGrid);
     }
-    
+
     const fromR = 8 - parseInt(fromSq[1]);
     const fromC = fromSq.charCodeAt(0) - 97;
     const toR = 8 - parseInt(toSq[1]);
     const toC = toSq.charCodeAt(0) - 97;
-    
+
     const piece = grid[fromR][fromC];
     grid[fromR][fromC] = '';
     grid[toR][toC] = piece;
-    
+
     let newRows = [];
     for (let r = 0; r < 8; r++) {
         let rowStr = '';
@@ -610,7 +610,7 @@ function movePieceInFen(fen, fromSq, toSq) {
         if (emptyCount > 0) rowStr += emptyCount;
         newRows.push(rowStr);
     }
-    
+
     tokens[0] = newRows.join('/');
     tokens[1] = tokens[1] === 'w' ? 'b' : 'w'; // Flip the turn character
     tokens[3] = '-'; // Disable En Passant to be safe when teleporting pawns
@@ -699,11 +699,11 @@ function showValidMoves(sqId) {
     if (chars[turnColor] === 'kirk' && abilities[turnColor].uniSniperActive && piece && piece.type === 'p') {
         const currCoord = sqToCoords(sqId);
         const dir = turnColor === 'w' ? 1 : -1;
-        
+
         const targetR = currCoord.r + (2 * dir);
         const targetC1 = currCoord.c - 2;
         const targetC2 = currCoord.c + 2;
-        
+
         [targetC1, targetC2].forEach(tc => {
             const targetSq = coordsToSq(tc, targetR);
             if (targetSq) {
@@ -711,7 +711,7 @@ function showValidMoves(sqId) {
                 const interC = currCoord.c + ((tc - currCoord.c) / 2);
                 const interR = currCoord.r + dir;
                 const interSq = coordsToSq(interC, interR);
-                
+
                 if (interSq && !game.get(interSq)) {
                     // Check if target has ENEMY piece (not King)
                     const targetPiece = game.get(targetSq);
@@ -735,7 +735,7 @@ function clearValidMoves() {
 function getCapturedPointsInfo(color) {
     const { capByWhite, capByBlack } = getMaterialBalance();
     const myCaps = color === 'w' ? capByWhite : capByBlack;
-    
+
     let totalValueAvailable = 0;
     Object.keys(myCaps).forEach(pt => {
         totalValueAvailable += (myCaps[pt] * PIECE_VALUES[pt]);
@@ -747,7 +747,7 @@ function getCapturedPointsInfo(color) {
 function updateEpsteinBuyTargets(color) {
     clearValidMoves();
     const { pointsAvailable } = getCapturedPointsInfo(color);
-    
+
     const boardState = game.board();
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
@@ -767,12 +767,12 @@ function updateEpsteinBuyTargets(color) {
 function attemptBuyPiece(buyerColor, targetSq, piece) {
     const { pointsAvailable } = getCapturedPointsInfo(buyerColor);
     const cost = PIECE_VALUES[piece.type] * 3;
-    
+
     if (pointsAvailable >= cost) {
         game.remove(targetSq);
         game.put({ type: piece.type, color: buyerColor }, targetSq);
         switchTurn();
-        postMoveLogic(buyerColor); 
+        postMoveLogic(buyerColor);
         updateBoard();
     }
 }
@@ -782,29 +782,29 @@ function triggerBibiUltimate(color) {
     let toKill = [];
 
     const boardState = game.board();
-    
+
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const p = boardState[r][c];
             if (p && p.color === enemyColor && p.type !== 'k') {
                 const sqCode = String.fromCharCode(97 + c) + (8 - r);
-                
+
                 game.remove(sqCode);
-                game.put({ type: p.type, color: color }, sqCode); 
-                
+                game.put({ type: p.type, color: color }, sqCode);
+
                 const fen = game.fen();
                 const enemyFen = fen.replace(` ${color} `, ` ${enemyColor} `);
-                
+
                 let isDefended = false;
                 try {
                     const tempGame = new Chess(enemyFen);
                     const tempMoves = tempGame.moves({ verbose: true });
                     isDefended = tempMoves.some(m => m.to === sqCode);
-                } catch(e) {}
-                
+                } catch (e) { }
+
                 game.remove(sqCode);
                 game.put({ type: p.type, color: enemyColor }, sqCode);
-                
+
                 if (!isDefended) {
                     toKill.push(sqCode);
                 }
@@ -819,7 +819,7 @@ function triggerBibiUltimate(color) {
     abilities[color].movesSinceLastUltimate = 0;
     const btnId = color === 'w' ? 'bottom-ability-btn' : 'top-ability-btn';
     document.getElementById(btnId).classList.remove('ready', 'active');
-    
+
     switchTurn();
     postMoveLogic(color);
     updateBoard();
@@ -828,7 +828,7 @@ function triggerBibiUltimate(color) {
 function switchTurn() {
     const fenTokens = game.fen().split(' ');
     fenTokens[1] = fenTokens[1] === 'w' ? 'b' : 'w';
-    fenTokens[3] = '-'; 
+    fenTokens[3] = '-';
     game.load(fenTokens.join(' '));
 }
 
@@ -858,10 +858,10 @@ function getMaterialBalance() {
             }
         }
     }
-    
+
     const capByWhite = {};
     const capByBlack = {};
-    
+
     ['p', 'n', 'b', 'r', 'q'].forEach(pt => {
         capByWhite[pt] = Math.max(0, START_COUNTS[pt] - currentCounts.b[pt]);
         capByBlack[pt] = Math.max(0, START_COUNTS[pt] - currentCounts.w[pt]);
@@ -872,13 +872,13 @@ function getMaterialBalance() {
 
 function updateCaptureBars() {
     const { score, capByWhite, capByBlack } = getMaterialBalance();
-    
+
     const topCapEl = document.getElementById('top-captures');
     const bottomCapEl = document.getElementById('bottom-captures');
-    
+
     topCapEl.innerHTML = '';
     bottomCapEl.innerHTML = '';
-    
+
     renderCaptures(topCapEl, capByBlack, 'white', score < 0 ? Math.abs(score) : 0);
     renderCaptures(bottomCapEl, capByWhite, 'black', score > 0 ? score : 0);
 }
@@ -913,7 +913,7 @@ function checkGameOver() {
     if (game.game_over()) {
         const modal = document.getElementById('game-over-modal');
         const msg = document.getElementById('game-over-message');
-        
+
         if (game.in_checkmate()) {
             const winner = game.turn() === 'w' ? 'Black' : 'White';
             msg.textContent = `Checkmate! ${winner} wins.`;
