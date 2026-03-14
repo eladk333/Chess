@@ -39,9 +39,9 @@ const abilities = {
     b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false }
 };
 
-const ULTIMATE_CHARGE_REQ = 20;
-const BABY_OIL_COOLDOWN = 10;
-const UNI_SNIPER_COOLDOWN = 5;
+const ULTIMATE_CHARGE_REQ = 10;
+const BABY_OIL_COOLDOWN = 5;
+const UNI_SNIPER_COOLDOWN = 3;
 
 // Avatar mappings based on the files you provided
 const avatarMap = {
@@ -88,6 +88,11 @@ function initGame() {
         if (needsAI) {
             aiWorker = new Worker('aiWorker.js');
             aiWorker.onmessage = handleAiResponse;
+            aiWorker.onerror = (err) => {
+                console.error('AI Worker error:', err);
+                aiThinking = false;
+                setTimeout(scheduleAiTurnIfNeeded, 500);
+            };
         }
 
         // Update UI Text & Avatars
@@ -149,7 +154,7 @@ function setupAbilityUI(color, side) {
         btn.disabled = false; // Always enabled to toggle mode
     } else if (chars[color] === 'bibi') {
         btn.textContent = 'Ultimate Strike';
-        status.textContent = '0/20 Moves';
+        status.textContent = '0/10 Moves';
     } else if (chars[color] === 'diddy') {
         btn.textContent = 'Baby Oil';
         btn.classList.add('ready');
@@ -371,7 +376,6 @@ function updateAbilityDisplay() {
         updateEpsteinBuyTargets(turnColor);
     }
 
-    scheduleAiTurnIfNeeded();
 }
 
 function handleDragStart(e) {
@@ -598,7 +602,13 @@ function movePieceInFen(fen, fromSq, toSq) {
 
     const piece = grid[fromR][fromC];
     grid[fromR][fromC] = '';
-    grid[toR][toC] = piece;
+
+    // CRITICAL FIX: Prevent game crash if pawn teleports/slips to back rank
+    let finalPiece = piece;
+    if (piece === 'p' && toR === 7) finalPiece = 'q'; // Black pawn promotes
+    if (piece === 'P' && toR === 0) finalPiece = 'Q'; // White pawn promotes
+
+    grid[toR][toC] = finalPiece;
 
     let newRows = [];
     for (let r = 0; r < 8; r++) {
@@ -952,9 +962,9 @@ function scheduleAiTurnIfNeeded() {
     document.getElementById(`${side}-thinking`).style.display = 'inline';
     document.getElementById(`${side}-ai-stats`).textContent = '';
 
-    // Small delay so the board renders before the AI freezes
+    // Small delay so the board renders before the AI thinks
     setTimeout(() => {
-        if (!aiWorker) return;
+        if (!aiWorker) { aiThinking = false; return; }
         aiWorker.postMessage({
             fen: game.fen(),
             chars: chars,
@@ -966,18 +976,22 @@ function scheduleAiTurnIfNeeded() {
 }
 
 function handleAiResponse(e) {
-    aiThinking = false;
     // Hide both thinking labels
     document.getElementById('top-thinking').style.display = 'none';
     document.getElementById('bottom-thinking').style.display = 'none';
 
     if (!e.data.success) {
         console.error('AI Error:', e.data.error);
+        // Clear the flag so the game isn't permanently frozen, then retry
+        aiThinking = false;
+        setTimeout(scheduleAiTurnIfNeeded, 500);
         return;
     }
 
     const { isAbility, move, depth, evalScore } = e.data.result;
     const nodes = e.data.nodes;
+
+    // Capture the color BEFORE applying any move
     const color = game.turn();
 
     // Display the stats
@@ -986,18 +1000,25 @@ function handleAiResponse(e) {
         document.getElementById(`${side}-ai-stats`).textContent = `Depth: ${depth} | Eval: ${evalScore} | Nodes: ${nodes}`;
     }
 
+    // Clear the thinking flag only now, right before we apply the move
+    aiThinking = false;
+
     if (isAbility) {
         executeAbilityMove(color, move);
     } else {
-        // Standard chess.js move
-        const result = game.move({ from: move.from, to: move.to, promotion: 'q' });
-        if (result) {
-            postMoveLogic(color);
-            updateBoard();
+        // CRITICAL FIX: The AI must use attemptMove so it slips on Diddy's oil!
+        const success = attemptMove(move.from, move.to);
+        if (!success) {
+            // Fallback just in case standard move gen failed
+            const result = game.move({ from: move.from, to: move.to, promotion: 'q' });
+            if (result) {
+                postMoveLogic(color);
+                updateBoard();
+            }
         }
     }
 
-    // Schedule next AI turn if both players are AI
+    // Schedule the next AI turn after a short delay
     setTimeout(scheduleAiTurnIfNeeded, 500);
 }
 
@@ -1028,10 +1049,13 @@ function executeAbilityMove(color, move) {
         updateBoard();
 
     } else if (move.abilityType === 'diddy_baby_oil') {
+        // Baby oil is activated — now the AI must still make a normal move this same turn.
+        // We send the worker another request immediately (aiThinking was already cleared above).
         abilities[color].babyOilActive = true;
         abilities[color].movesSinceBabyOil = 0;
-        // After activating, AI still needs to make a standard move this turn
-        // so we just mark the trap and let the normal move follow
+        updateBoard(); // show trap-active UI
+        // Re-run the AI for the normal move on the same turn
+        setTimeout(scheduleAiTurnIfNeeded, 300);
     }
 }
 

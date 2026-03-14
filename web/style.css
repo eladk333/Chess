@@ -5,7 +5,7 @@
     /* Yellowish highlight */
     --selected: rgba(20, 85, 30, 0.5);
     /* Greenish highlight for selected */
-    --board-size: 640px;
+    --board-size: min(640px, 96vw);
     --tile-size: calc(var(--board-size) / 8);
 }
 
@@ -539,4 +539,173 @@ body.hunting-mode .piece {
     color: #88ceeb;
     margin-left: 10px;
     font-family: monospace;
+}
+
+/* ===== RESPONSIVE / MOBILE ===== */
+
+/* Tablet and below */
+@media (max-width: 768px) {
+    body {
+        align-items: flex-start;
+        padding: 8px 0;
+    }
+
+    #game-container {
+        width: var(--board-size);
+        gap: 6px;
+    }
+
+    .player-info {
+        height: auto;
+        padding: 6px 8px;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+
+    .player-details {
+        gap: 8px;
+    }
+
+    .player-name {
+        font-size: 1rem;
+    }
+
+    .avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .ability-container {
+        margin: 0 6px;
+    }
+
+    .ability-btn {
+        padding: 4px 10px;
+        font-size: 0.8rem;
+    }
+
+    .ability-status {
+        font-size: 0.7rem;
+    }
+
+    .ai-thinking-label {
+        font-size: 0.75rem;
+    }
+
+    .ai-stats-label {
+        font-size: 0.7rem;
+    }
+
+    /* Character selection modal — stack columns vertically */
+    .select-row {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .large-modal {
+        max-width: 98vw;
+        width: 98vw;
+        padding: 16px;
+        max-height: 95vh;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .select-col {
+        padding: 14px;
+    }
+
+    .char-card {
+        padding: 10px 12px;
+    }
+
+    .char-card p {
+        font-size: 0.82rem;
+    }
+
+    .menu-btn {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+
+    #game-over-message {
+        font-size: 1.4rem;
+    }
+}
+
+/* Phone — extra small screens */
+@media (max-width: 480px) {
+    :root {
+        --board-size: min(640px, 100vw);
+    }
+
+    body {
+        padding: 4px 0;
+    }
+
+    #game-container {
+        gap: 4px;
+    }
+
+    .player-info {
+        padding: 5px 6px;
+    }
+
+    .player-name {
+        font-size: 0.88rem;
+    }
+
+    .avatar {
+        width: 28px;
+        height: 28px;
+    }
+
+    .coord {
+        font-size: 9px;
+    }
+
+    /* Smaller ability button so it fits in the narrow bar */
+    .ability-btn {
+        padding: 3px 7px;
+        font-size: 0.72rem;
+    }
+
+    /* Char select modal adjustments */
+    .large-modal h2 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+    }
+
+    .select-col h3 {
+        font-size: 0.95rem;
+    }
+
+    .char-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .char-card h4 {
+        font-size: 0.95rem;
+    }
+
+    .char-card p {
+        font-size: 0.78rem;
+    }
+
+    .menu-btn {
+        font-size: 0.9rem;
+        padding: 9px 16px;
+    }
+
+    #game-over-message {
+        font-size: 1.1rem;
+    }
+
+    .player-type-row {
+        padding: 6px 8px;
+        gap: 6px;
+    }
 }

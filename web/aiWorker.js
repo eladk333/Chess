@@ -107,7 +107,13 @@ function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     const toR = 8 - parseInt(toSq[1]), toC = toSq.charCodeAt(0) - 97;
     const piece = grid[fromR][fromC];
     grid[fromR][fromC] = '';
-    grid[toR][toC] = piece;
+
+    // CRITICAL FIX: Prevent AI crash if pawn teleports/slips to back rank
+    let finalPiece = piece;
+    if (piece === 'p' && toR === 7) finalPiece = 'q';
+    if (piece === 'P' && toR === 0) finalPiece = 'Q';
+
+    grid[toR][toC] = finalPiece;
     let newRows = [];
     for (let r = 0; r < 8; r++) {
         let rowStr = '', emptyCount = 0;
@@ -149,7 +155,7 @@ function getAbilityMoves(fen, chars, abilities, color) {
     const ab = abilities[color];
     const game = new Chess(fen);
 
-    if (char === 'bibi' && ab.movesSinceLastUltimate >= 20) {
+    if (char === 'bibi' && ab.movesSinceLastUltimate >= 10) {
         const enemyColor = color === 'w' ? 'b' : 'w';
         const boardState = game.board();
         const toKill = [];
@@ -195,11 +201,11 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
-    if (char === 'diddy' && ab.movesSinceBabyOil >= 10 && !ab.babyOilActive) {
+    if (char === 'diddy' && ab.movesSinceBabyOil >= 5 && !ab.babyOilActive) {
         moves.push({ abilityType: 'diddy_baby_oil', color });
     }
 
-    if (char === 'kirk' && ab.movesSinceUniSniper >= 5) {
+    if (char === 'kirk' && ab.movesSinceUniSniper >= 3) {
         const enemyColor = color === 'w' ? 'b' : 'w';
         const dir = color === 'w' ? 1 : -1;
         const boardState = game.board();
