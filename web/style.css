@@ -533,3 +533,10 @@ body.hunting-mode .piece {
     font-weight: bold;
     animation: none;
 }
+
+.ai-stats-label {
+    font-size: 0.8rem;
+    color: #88ceeb;
+    margin-left: 10px;
+    font-family: monospace;
+}

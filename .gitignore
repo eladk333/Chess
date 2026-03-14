@@ -17,3 +17,6 @@ chess_model.pt
 chess_model_best.pt
 chess_model.pt
 chess_model_best.pt
+
+node_modules/
+*.pgn

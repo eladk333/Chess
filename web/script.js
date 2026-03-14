@@ -77,8 +77,8 @@ function initGame() {
         playerTypes.b = document.getElementById('black-ai-type').value;
 
         // Reset state
-        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
-        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, capturedPoints: 0 };
+        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
+        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
         aiThinking = false;
         document.body.classList.remove('hunting-mode');
 
@@ -99,6 +99,9 @@ function initGame() {
 
         setupAbilityUI('w', 'bottom');
         setupAbilityUI('b', 'top');
+
+        document.getElementById('top-ai-stats').textContent = '';
+        document.getElementById('bottom-ai-stats').textContent = '';
 
         document.getElementById('char-select-modal').style.display = 'none';
         game.reset();
@@ -540,8 +543,13 @@ function attemptMove(from, to) {
 
         // Manual slip FEN manipulation to bypass chess.js history/put bugs
         const fen = game.fen();
-        const newFen = movePieceInFen(fen, to, slipSquare);
-        game.load(newFen);
+        let newFen = movePieceInFen(fen, to, slipSquare);
+
+        // movePieceInFen automatically flips the turn, but game.move() already flipped it. 
+        // We must flip it back to prevent the same player from going twice.
+        let tokens = newFen.split(' ');
+        tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
+        game.load(tokens.join(' '));
 
         // Disable the trap
         abilities[enemyColor].babyOilActive = false;
@@ -741,7 +749,7 @@ function getCapturedPointsInfo(color) {
         totalValueAvailable += (myCaps[pt] * PIECE_VALUES[pt]);
     });
 
-    return { pointsAvailable: totalValueAvailable };
+    return { pointsAvailable: totalValueAvailable - (abilities[color].spentPoints || 0) };
 }
 
 function updateEpsteinBuyTargets(color) {
@@ -769,6 +777,7 @@ function attemptBuyPiece(buyerColor, targetSq, piece) {
     const cost = PIECE_VALUES[piece.type] * 3;
 
     if (pointsAvailable >= cost) {
+        abilities[buyerColor].spentPoints = (abilities[buyerColor].spentPoints || 0) + cost;
         game.remove(targetSq);
         game.put({ type: piece.type, color: buyerColor }, targetSq);
         switchTurn();
@@ -941,6 +950,7 @@ function scheduleAiTurnIfNeeded() {
     aiThinking = true;
     const side = color === 'w' ? 'bottom' : 'top';
     document.getElementById(`${side}-thinking`).style.display = 'inline';
+    document.getElementById(`${side}-ai-stats`).textContent = '';
 
     // Small delay so the board renders before the AI freezes
     setTimeout(() => {
@@ -966,8 +976,15 @@ function handleAiResponse(e) {
         return;
     }
 
-    const { isAbility, move } = e.data.result;
+    const { isAbility, move, depth, evalScore } = e.data.result;
+    const nodes = e.data.nodes;
     const color = game.turn();
+
+    // Display the stats
+    const side = color === 'w' ? 'bottom' : 'top';
+    if (depth !== undefined) {
+        document.getElementById(`${side}-ai-stats`).textContent = `Depth: ${depth} | Eval: ${evalScore} | Nodes: ${nodes}`;
+    }
 
     if (isAbility) {
         executeAbilityMove(color, move);
@@ -996,7 +1013,7 @@ function executeAbilityMove(color, move) {
     } else if (move.abilityType === 'epstein_buy') {
         game.remove(move.sq);
         game.put({ type: move.piece.type, color: color }, move.sq);
-        abilities[color].capturedPoints = (abilities[color].capturedPoints || 0) - move.cost;
+        abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
         switchTurn();
         postMoveLogic(color);
         updateBoard();
