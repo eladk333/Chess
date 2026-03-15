@@ -231,6 +231,24 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
+    if (char === 'aheud' && ab.movesSinceSmoke >= 5 && !ab.smokeActive) {
+        const enemyColor = color === 'w' ? 'b' : 'w';
+        let targetSq = null;
+        const boardState = game.board();
+        // The AI will aggressively smoke bomb the enemy King
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = boardState[r][c];
+                if (p && p.color === enemyColor && p.type === 'k') {
+                    targetSq = String.fromCharCode(97 + c) + (8 - r);
+                }
+            }
+        }
+        if (targetSq) {
+            moves.push({ abilityType: 'aheud_smoke', sq: targetSq, color });
+        }
+    }
+
     return moves;
 }
 
@@ -243,7 +261,8 @@ function applyAbilityMove(fen, move) {
         game.put({ type: move.piece.type, color: move.color }, move.sq);
     } else if (move.abilityType === 'kirk_snipe') {
         return movePieceInFen(game.fen(), move.from, move.to, true);
-    } else if (move.abilityType === 'diddy_baby_oil') {
+    } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
+        // Free action: do not flip the turn
         return fen;
     }
 
@@ -306,6 +325,7 @@ function scoreMoveForOrdering(game, move) {
         if (move.abilityType === 'bibi_ultimate') return 1000000;
         if (move.abilityType === 'epstein_buy') return 500000 + (move.frontendCost * 100);
         if (move.abilityType === 'kirk_snipe') return 300000;
+        if (move.abilityType === 'aheud_smoke') return 250000;
         if (move.abilityType === 'diddy_baby_oil') return 200000;
     }
     let score = 0;
@@ -331,6 +351,12 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
         else if (move.abilityType === 'epstein_buy') childAbilities[color].spentPoints = (childAbilities[color].spentPoints || 0) + move.frontendCost;
         else if (move.abilityType === 'diddy_baby_oil') { childAbilities[color].babyOilActive = true; childAbilities[color].movesSinceBabyOil = 0; }
         else if (move.abilityType === 'kirk_snipe') { childAbilities[color].movesSinceUniSniper = 0; childAbilities[color].uniSniperActive = false; }
+        else if (move.abilityType === 'aheud_smoke') {
+            childAbilities[color].smokeActive = true;
+            childAbilities[color].smokeRemainingMoves = 4; // Set to 4 so it survives the piece move!
+            childAbilities[color].movesSinceSmoke = 0;
+            childAbilities[color].smokeCenterSq = move.sq;
+        }
     } else {
         let slipSquare = null;
         const enemyColor = color === 'w' ? 'b' : 'w';
@@ -367,6 +393,14 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
         if (chars[color] === 'bibi') childAbilities[color].movesSinceLastUltimate++;
         if (chars[color] === 'diddy' && !childAbilities[color].babyOilActive) childAbilities[color].movesSinceBabyOil++;
         if (chars[color] === 'kirk' && !childAbilities[color].uniSniperActive) childAbilities[color].movesSinceUniSniper++;
+        if (chars[color] === 'aheud') {
+            if (childAbilities[color].smokeActive) {
+                childAbilities[color].smokeRemainingMoves--;
+                if (childAbilities[color].smokeRemainingMoves <= 0) childAbilities[color].smokeActive = false;
+            } else {
+                childAbilities[color].movesSinceSmoke++;
+            }
+        }
     }
 
     return { childFen, childAbilities };

@@ -37,8 +37,8 @@ const chars = {
 };
 
 const abilities = {
-    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false },
-    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false }
+    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false },
+    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false }
 };
 
 const ULTIMATE_CHARGE_REQ = 10;
@@ -53,7 +53,8 @@ const avatarMap = {
     'kirk': 'kirk.jfif',
     'noam': 'noam.jfif',
     'shlomo': 'shlomo.jfif',
-    'dvir': 'dvir.jfif'
+    'dvir': 'dvir.jfif',
+    'aheud': 'barak.png'
 };
 
 function initGame() {
@@ -81,9 +82,8 @@ function initGame() {
         if (chars.w === 'dvir') playerTypes.w = 'stockfish';
         if (chars.b === 'dvir') playerTypes.b = 'stockfish';
 
-        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
-        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
-        aiThinking = false;
+        abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false };
+        abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false }; aiThinking = false;
         document.body.classList.remove('hunting-mode');
 
         if (aiWorker) { aiWorker.terminate(); aiWorker = null; }
@@ -155,6 +155,7 @@ function formatCharName(charId) {
     if (charId === 'noam') return 'Noam';
     if (charId === 'shlomo') return 'Shlomo';
     if (charId === 'dvir') return 'Dvir';
+    if (charId === 'aheud') return 'Aheud Barak';
     return '';
 }
 
@@ -186,7 +187,13 @@ function setupAbilityUI(color, side) {
         btn.classList.add('ready');
         status.textContent = 'Ready!';
         btn.disabled = false;
+    } else if (chars[color] === 'aheud') {
+        btn.textContent = 'Smoke Bomb';
+        btn.classList.add('ready');
+        status.textContent = 'Ready!';
+        btn.disabled = false;
     }
+
 }
 
 function handleAbilityClick(color) {
@@ -237,6 +244,20 @@ function handleAbilityClick(color) {
 
             playSound('kirk');
         }
+    } else if (chars[color] === 'aheud') {
+        if (abilities[color].movesSinceSmoke >= 5 && !abilities[color].smokeActive) {
+            abilities[color].targetingSmoke = !abilities[color].targetingSmoke;
+            const side = color === 'w' ? 'bottom' : 'top';
+            const btn = document.getElementById(`${side}-ability-btn`);
+
+            if (abilities[color].targetingSmoke) {
+                btn.classList.add('active');
+                document.body.classList.add('targeting-smoke');
+            } else {
+                btn.classList.remove('active');
+                document.body.classList.remove('targeting-smoke');
+            }
+        }
     }
 }
 
@@ -279,9 +300,22 @@ function createBoard() {
 function updateBoard(animateSlipForSquare = null) {
     document.querySelectorAll('.square').forEach(sq => {
         Array.from(sq.children).forEach(child => {
-            if (child.classList.contains('piece')) child.remove();
+            if (child.classList.contains('piece') || child.classList.contains('smoke-overlay')) child.remove();
         });
-        sq.classList.remove('highlight', 'selected', 'valid-move', 'valid-capture', 'buy-target', 'slipping');
+        sq.classList.remove('highlight', 'selected', 'valid-move', 'valid-capture', 'buy-target', 'slipping', 'obscured');
+    });
+
+    const smokedSquares = new Set();
+    ['w', 'b'].forEach(c => {
+        if (abilities[c].smokeActive && abilities[c].smokeCenterSq) {
+            const center = sqToCoords(abilities[c].smokeCenterSq);
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    const sq = coordsToSq(center.c + dc, center.r + dr);
+                    if (sq) smokedSquares.add(sq);
+                }
+            }
+        }
     });
 
     const boardState = game.board();
@@ -295,12 +329,13 @@ function updateBoard(animateSlipForSquare = null) {
 
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
+            // Define sqId HERE so both the pieces and the smoke can use it safely
+            const file = String.fromCharCode(97 + col);
+            const rank = 8 - row;
+            const sqId = file + rank;
+
             const piece = boardState[row][col];
             if (piece) {
-                const file = String.fromCharCode(97 + col);
-                const rank = 8 - row;
-                const sqId = file + rank;
-
                 const pieceEl = document.createElement('div');
                 pieceEl.className = 'piece';
 
@@ -320,6 +355,13 @@ function updateBoard(animateSlipForSquare = null) {
                 pieceEl.addEventListener('dragend', handleDragEnd);
 
                 document.getElementById(sqId).appendChild(pieceEl);
+            }
+
+            if (smokedSquares.has(sqId)) {
+                document.getElementById(sqId).classList.add('obscured');
+                const smokeEl = document.createElement('div');
+                smokeEl.className = 'smoke-overlay';
+                document.getElementById(sqId).appendChild(smokeEl);
             }
         }
     }
@@ -389,6 +431,24 @@ function updateAbilityDisplay() {
                     btn.classList.remove('ready');
                 }
             }
+        } else if (char === 'aheud') {
+            if (abilities[color].smokeActive) {
+                status.textContent = `Active (${abilities[color].smokeRemainingMoves})`;
+                btn.disabled = true;
+                btn.classList.add('active');
+            } else {
+                const charge = abilities[color].movesSinceSmoke;
+                btn.classList.remove('active');
+                if (charge >= 5) {
+                    status.textContent = 'Ready!';
+                    btn.disabled = game.turn() !== color;
+                    btn.classList.add('ready');
+                } else {
+                    status.textContent = `Cooldown: ${5 - charge}`;
+                    btn.disabled = true;
+                    btn.classList.remove('ready');
+                }
+            }
         }
     });
 
@@ -442,7 +502,21 @@ function handleSquareClick(sqId) {
     const turnColor = game.turn();
     if (playerTypes[turnColor] !== 'human' || aiThinking) return;
     const piece = game.get(sqId);
+    if (chars[turnColor] === 'aheud' && abilities[turnColor].targetingSmoke) {
+        abilities[turnColor].targetingSmoke = false;
+        abilities[turnColor].smokeActive = true;
+        abilities[turnColor].smokeRemainingMoves = 4; // Set to 4 so it survives the impending piece move
+        abilities[turnColor].movesSinceSmoke = 0;
+        abilities[turnColor].smokeCenterSq = sqId;
 
+        document.body.classList.remove('targeting-smoke');
+        document.getElementById(`${turnColor === 'w' ? 'bottom' : 'top'}-ability-btn`).classList.remove('ready', 'active');
+
+        playSound('smoke');
+        updateBoard();
+        // Turn is NOT switched, allowing the player to make their piece move!
+        return;
+    }
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
         if (piece && piece.color !== turnColor && piece.type !== 'k') {
             attemptBuyPiece(turnColor, sqId, piece);
@@ -690,15 +764,26 @@ function postMoveLogic(colorWhoMoved) {
             abilities[colorWhoMoved].movesSinceUniSniper++;
         }
     }
+    if (chars[colorWhoMoved] === 'aheud') {
+        if (abilities[colorWhoMoved].smokeActive) {
+            abilities[colorWhoMoved].smokeRemainingMoves--;
+            if (abilities[colorWhoMoved].smokeRemainingMoves <= 0) {
+                abilities[colorWhoMoved].smokeActive = false;
+            }
+        } else {
+            abilities[colorWhoMoved].movesSinceSmoke++;
+        }
+    }
 
     ['w', 'b'].forEach(c => {
         if (chars[c] === 'epstein') {
             abilities[c].huntingMode = false;
         }
         abilities[c].uniSniperActive = false;
+        abilities[c].targetingSmoke = false;
     });
 
-    document.body.classList.remove('hunting-mode');
+    document.body.classList.remove('hunting-mode', 'targeting-smoke');
     document.getElementById('bottom-ability-btn').classList.remove('active');
     document.getElementById('top-ability-btn').classList.remove('active');
 
@@ -1114,6 +1199,17 @@ function executeAbilityMove(color, move) {
         updateBoard();
 
         // This is correct as 300ms because baby oil sets the trap but doesn't end the turn.
+        setTimeout(scheduleAiTurnIfNeeded, 300);
+    } else if (move.abilityType === 'aheud_smoke') {
+        abilities[color].smokeActive = true;
+        abilities[color].smokeRemainingMoves = 4;
+        abilities[color].movesSinceSmoke = 0;
+        abilities[color].smokeCenterSq = move.sq;
+
+        playSound('smoke');
+        updateBoard();
+
+        // Wait briefly, then let the AI take its actual piece move
         setTimeout(scheduleAiTurnIfNeeded, 300);
     }
 }
