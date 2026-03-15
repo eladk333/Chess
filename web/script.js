@@ -654,6 +654,29 @@ function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
 }
 
 function postMoveLogic(colorWhoMoved) {
+    // Check the game history to see if the last standard move was a capture
+    const hist = game.history({ verbose: true });
+    const lastMove = hist.length > 0 ? hist[hist.length - 1] : null;
+    const isCapture = lastMove && (lastMove.flags.includes('c') || lastMove.flags.includes('e'));
+
+    // Trigger the Bibi quote
+    if (chars[colorWhoMoved] === 'bibi' && isCapture) {
+        const side = colorWhoMoved === 'w' ? 'bottom' : 'top';
+        const label = document.getElementById(`${side}-thinking`);
+
+        label.style.color = 'green';
+        label.style.fontSize = '1.5em';
+        label.textContent = 'Yummy! Palestine kids';
+        label.style.display = 'inline';
+
+        setTimeout(() => {
+            label.style.display = 'none';
+            label.textContent = '🤔 Thinking...';
+            label.style.color = ''; // Reset color back to default
+            label.style.fontSize = '';
+        }, 2000);
+    }
+
     if (chars[colorWhoMoved] === 'bibi') {
         abilities[colorWhoMoved].movesSinceLastUltimate++;
     }
