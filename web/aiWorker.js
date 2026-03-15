@@ -546,7 +546,7 @@ function minimaxBestMove(fen, chars, abilities, color) {
 
             lastCompletedDepth = depth;
             finalDisplayScore = displayScore;
-            console.log(`[Minimax] depth=${depth}  positions=${nodeCount}  transpositions=${ttHits}  move=${moveStr}  eval=${displayScore}`);
+            // console.log(`[Minimax] depth=${depth}  positions=${nodeCount}  transpositions=${ttHits}  move=${moveStr}  eval=${displayScore}`);
         } catch (e) {
             if (e === 'timeout') {
                 console.log(`[Minimax] Timeout hit! Stopped during depth ${depth}. Final chosen move from depth ${depth - 1}.`);

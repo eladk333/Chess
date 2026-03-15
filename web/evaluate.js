@@ -1,148 +1,158 @@
-const { spawn } = require('child_process');
-const { Worker } = require('worker_threads');
-const { Chess } = require('chess.js');
+// ============================================================
+// evaluate.js - Chess Engine Arena
+// ============================================================
 
-// --- CONFIGURATION ---
-const STOCKFISH_PATH = "C:\\Users\\eladk\\Downloads\\stockfish-windows-x86-64-avx2\\stockfish\\stockfish-windows-x86-64-avx2.exe";
-const ELOS = [1500, 1700, 1900];
-const NUM_GAMES_PER_ELO = 2;
-const TIME_LIMIT_MS = 1000; // Lowered to 1 second so the tournament finishes reasonably fast!
+// You will need chess.js loaded in your HTML for the referee to work
+// <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 
-const chars = { w: 'none', b: 'none' };
-const abilities = {
-    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 },
-    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 }
-};
+class CustomAIEngine {
+    constructor(name, workerScript) {
+        this.name = name;
+        this.worker = new Worker(workerScript);
 
-// --- STOCKFISH WRAPPER ---
-class Stockfish {
-    constructor(path, elo) {
-        this.process = spawn(path);
-        this.process.stdin.write('uci\n');
-        this.process.stdin.write('setoption name UCI_LimitStrength value true\n');
-        this.process.stdin.write(`setoption name UCI_Elo value ${elo}\n`);
-        this.process.stdin.write('isready\n');
+        // Disable abilities to test pure chess strength
+        this.baseChars = { w: 'none', b: 'none' };
+        this.baseAbilities = {
+            w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 },
+            b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 }
+        };
     }
 
-    async getBestMove(fen, timeLimitMs) {
-        return new Promise((resolve) => {
-            let buffer = '';
-            const listener = (data) => {
-                buffer += data.toString();
-                const match = buffer.match(/bestmove\s+(\S+)/);
-                if (match) {
-                    this.process.stdout.removeListener('data', listener);
-                    resolve(match[1]);
+    async getMove(fen, color) {
+        return new Promise((resolve, reject) => {
+            this.worker.onmessage = (e) => {
+                if (!e.data.success) {
+                    console.error(`${this.name} Error:`, e.data.error);
+                    reject(e.data.error);
+                } else {
+                    const move = e.data.result.move;
+                    // Format into standard UCI notation (e.g., e2e4, e7e8q)
+                    let uciMove = move.from + move.to;
+                    if (move.promotion) uciMove += move.promotion;
+                    resolve(uciMove);
                 }
             };
-            this.process.stdout.on('data', listener);
-            this.process.stdin.write(`position fen ${fen}\n`);
-            this.process.stdin.write(`go movetime ${timeLimitMs}\n`);
+
+            this.worker.postMessage({
+                fen: fen,
+                chars: this.baseChars,
+                abilities: this.baseAbilities,
+                color: color,
+                aiType: 'minimax'
+            });
         });
     }
 
-    kill() {
-        this.process.kill();
+    terminate() {
+        this.worker.terminate();
     }
 }
 
-// --- AI WORKER WRAPPER ---
-const workerCode = `
-    const { parentPort } = require('worker_threads');
-    const { Chess } = require('chess.js');
-    const fs = require('fs');
+class StockfishEngine {
+    constructor(workerScript, elo = 1500) {
+        this.name = `Stockfish (${elo})`;
+        this.worker = new Worker(workerScript);
+        this.isReady = false;
 
-    // Mute internal logging to keep your terminal clean
-    console.log = () => {}; 
-    global.importScripts = () => {}; 
-    global.self = { postMessage: (data) => parentPort.postMessage(data) };
+        // Initialize UCI
+        this.worker.postMessage('uci');
+        this.worker.postMessage('setoption name UCI_LimitStrength value true');
+        this.worker.postMessage(`setoption name UCI_Elo value ${elo}`);
+        this.worker.postMessage('isready');
+    }
 
-    // Dynamically patch the null pointer crash in aiWorker.js without editing the file directly
-    let aiScript = fs.readFileSync('aiWorker.js', 'utf8');
-    aiScript = aiScript.replace(/move\\.abilityType/g, "(move && move.abilityType)");
-    aiScript = aiScript.replace(/bestMoveOverall\\.abilityType/g, "(bestMoveOverall && bestMoveOverall.abilityType)");
-    eval(aiScript);
-
-    parentPort.on('message', (data) => {
-        if (self.onmessage) self.onmessage({ data });
-    });
-`;
-
-async function getAiMove(worker, fen, color) {
-    return new Promise((resolve, reject) => {
-        worker.once('message', (msg) => {
-            if (msg.success) resolve(msg.result);
-            else reject(msg.error);
+    async getMove(fen, color) {
+        return new Promise((resolve) => {
+            const listener = (e) => {
+                const msg = e.data;
+                if (typeof msg === 'string' && msg.startsWith('bestmove')) {
+                    this.worker.removeEventListener('message', listener);
+                    const move = msg.split(' ')[1]; // e.g., "e2e4"
+                    resolve(move);
+                }
+            };
+            this.worker.addEventListener('message', listener);
+            this.worker.postMessage(`position fen ${fen}`);
+            // Give Stockfish 4 seconds to match your custom AI limit
+            this.worker.postMessage('go movetime 4000');
         });
-        worker.postMessage({ fen, chars, abilities, color, aiType: 'minimax' });
-    });
+    }
+
+    terminate() {
+        this.worker.terminate();
+    }
 }
 
-// --- MAIN LOOP ---
-async function runTournament() {
-    const results = {};
+// ---- The Referee / Arena ----
+async function playGame(whiteEngine, blackEngine) {
+    const game = new Chess();
+    console.log(`\n⚔️ MATCH START: ${whiteEngine.name} (White) vs ${blackEngine.name} (Black)`);
 
-    for (const elo of ELOS) {
-        results[elo] = { aiWins: 0, sfWins: 0, draws: 0 };
-        const sfEngine = new Stockfish(STOCKFISH_PATH, elo);
+    let moveCount = 1;
 
-        for (let i = 0; i < NUM_GAMES_PER_ELO; i++) {
-            const game = new Chess();
-            const worker = new Worker(workerCode, { eval: true });
-            const aiIsWhite = (i % 2 !== 0);
+    while (!game.game_over()) {
+        const turnColor = game.turn();
+        const currentEngine = turnColor === 'w' ? whiteEngine : blackEngine;
 
-            while (!game.game_over()) {
-                const turnColor = game.turn();
-                const isAiTurn = (turnColor === 'w' && aiIsWhite) || (turnColor === 'b' && !aiIsWhite);
+        const fen = game.fen();
+        const startTime = performance.now();
 
-                let moveStr;
-                if (isAiTurn) {
-                    const result = await getAiMove(worker, game.fen(), turnColor);
+        try {
+            const moveStr = await currentEngine.getMove(fen, turnColor);
+            const timeTaken = ((performance.now() - startTime) / 1000).toFixed(2);
 
-                    // Fallback if AI gets completely stuck to prevent infinite crashing loops
-                    if (!result || !result.move) {
-                        break;
-                    }
-                    moveStr = { from: result.move.from, to: result.move.to, promotion: 'q' };
-                } else {
-                    const sfMove = await sfEngine.getBestMove(game.fen(), TIME_LIMIT_MS);
-                    // Stockfish outputs (none) if it is checkmated
-                    if (sfMove === '(none)') break;
-                    moveStr = { from: sfMove.substring(0, 2), to: sfMove.substring(2, 4), promotion: sfMove.length > 4 ? sfMove[4] : undefined };
-                }
+            const moveResult = game.move(moveStr, { sloppy: true });
 
-                const moveAttempt = game.move(moveStr);
-                if (!moveAttempt) break; // End game if an illegal move is generated
+            if (!moveResult) {
+                console.error(`❌ INVALID MOVE by ${currentEngine.name}: ${moveStr}`);
+                return `${currentEngine.name} forfeited due to illegal move.`;
             }
 
-            worker.terminate();
+            let logPrefix = turnColor === 'w' ? `${Math.ceil(moveCount / 2)}.` : `${Math.ceil(moveCount / 2)}...`;
+            //console.log(`${logPrefix} ${moveResult.san} (${currentEngine.name} took ${timeTaken}s)`);
 
-            // Tally results silently
-            if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
-                results[elo].draws++;
-            } else {
-                const winnerIsWhite = game.turn() === 'b';
-                if (winnerIsWhite === aiIsWhite) {
-                    results[elo].aiWins++;
-                } else {
-                    results[elo].sfWins++;
-                }
-            }
+        } catch (error) {
+            console.error(`${currentEngine.name} crashed!`);
+            return `${currentEngine.name} crashed.`;
         }
-        sfEngine.kill();
+
+        moveCount++;
     }
 
-    // --- FINAL OUTPUT ---
-    console.log("\n==============================");
-    console.log("      TOURNAMENT RESULTS      ");
-    console.log("==============================");
-    for (const elo of ELOS) {
-        console.log(`\nvs Stockfish ${elo}:`);
-        console.log(`  Minimax AI Wins: ${results[elo].aiWins}`);
-        console.log(`  Stockfish Wins : ${results[elo].sfWins}`);
-        console.log(`  Draws          : ${results[elo].draws}`);
+    // Determine Result
+    if (game.in_checkmate()) {
+        const winner = game.turn() === 'w' ? blackEngine.name : whiteEngine.name;
+        console.log(`🏆 CHECKMATE! ${winner} wins.`);
+        return `${winner} wins by Checkmate.`;
+    } else if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
+        console.log(`🤝 DRAW!`);
+        return "Draw.";
     }
-    console.log("\n==============================\n");
 }
 
-runTournament().catch(err => console.error("Tournament Failed:", err));
+async function runTournament() {
+    console.log("=====================================");
+    console.log("🏁 CHESS ENGINE TOURNAMENT STARTING");
+    console.log("=====================================");
+
+    // Match 1: Old vs New
+    let oldAi = new CustomAIEngine("Old AI", "aiWorker.js");
+    let newAi = new CustomAIEngine("New AI", "newaiWorker.js");
+    await playGame(oldAi, newAi);
+    oldAi.terminate();
+    newAi.terminate();
+
+    // Match 2: New vs Stockfish 1500
+    newAi = new CustomAIEngine("New AI", "newaiWorker.js");
+    let stockfish = new StockfishEngine("stockfish.js", 1500);
+    await playGame(newAi, stockfish);
+    newAi.terminate();
+    stockfish.terminate();
+
+    console.log("=====================================");
+    console.log("🏁 TOURNAMENT COMPLETE");
+    console.log("=====================================");
+}
+
+// Make it available globally so you can trigger it from HTML
+window.runTournament = runTournament;
