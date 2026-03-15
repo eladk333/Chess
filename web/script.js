@@ -24,13 +24,15 @@ let selectedSquare = null;
 let preventClick = false;
 
 // --- AI Player State ---
-const playerTypes = { w: 'human', b: 'human' }; // 'human', 'random', 'minimax'
+const playerTypes = { w: 'human', b: 'human' };
 let aiWorker = null;
+let stockfishWorker = null;
+let stockfishThinkingColor = null;
 let aiThinking = false;
 
 // --- Character & Ability State ---
 const chars = {
-    w: 'none', // 'none', 'epstein', 'bibi', 'diddy', 'kirk'
+    w: 'none',
     b: 'none'
 };
 
@@ -43,7 +45,6 @@ const ULTIMATE_CHARGE_REQ = 10;
 const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
-// Avatar mappings based on the files you provided
 const avatarMap = {
     'none': 'virgin_human.png',
     'epstein': 'epstien.jpg',
@@ -51,14 +52,14 @@ const avatarMap = {
     'diddy': 'diddy.jpg',
     'kirk': 'kirk.jfif',
     'noam': 'noam.jfif',
-    'shlomo': 'shlomo.jfif'
+    'shlomo': 'shlomo.jfif',
+    'dvir': 'dvir.jfif'
 };
 
 function initGame() {
     createBoard();
-    playSound('start'); // hypothetical game start sound
+    playSound('start');
 
-    // Character Selection Logic
     document.querySelectorAll('.char-card').forEach(card => {
         card.addEventListener('click', (e) => {
             const container = e.currentTarget.closest('.char-options');
@@ -76,16 +77,22 @@ function initGame() {
         playerTypes.w = document.getElementById('white-ai-type').value;
         playerTypes.b = document.getElementById('black-ai-type').value;
 
-        // Reset state
+        // Force Dvir to always use Stockfish, ignoring the UI selector
+        if (chars.w === 'dvir') playerTypes.w = 'stockfish';
+        if (chars.b === 'dvir') playerTypes.b = 'stockfish';
+
         abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
         abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0 };
         aiThinking = false;
         document.body.classList.remove('hunting-mode');
 
-        // Setup AI Worker
         if (aiWorker) { aiWorker.terminate(); aiWorker = null; }
-        const needsAI = playerTypes.w !== 'human' || playerTypes.b !== 'human';
-        if (needsAI) {
+        if (stockfishWorker) { stockfishWorker.terminate(); stockfishWorker = null; }
+
+        const needsStandardAI = playerTypes.w === 'random' || playerTypes.w === 'minimax' || playerTypes.b === 'random' || playerTypes.b === 'minimax';
+        const needsStockfish = playerTypes.w === 'stockfish' || playerTypes.b === 'stockfish';
+
+        if (needsStandardAI) {
             aiWorker = new Worker('aiWorker.js');
             aiWorker.onmessage = handleAiResponse;
             aiWorker.onerror = (err) => {
@@ -95,7 +102,21 @@ function initGame() {
             };
         }
 
-        // Update UI Text & Avatars
+        if (needsStockfish) {
+            stockfishWorker = new Worker('stockfish.js');
+            stockfishWorker.postMessage('uci');
+            stockfishWorker.postMessage('setoption name Skill Level value 20');
+            stockfishWorker.onmessage = function (e) {
+                const line = typeof e.data === 'string' ? e.data : '';
+                if (line.startsWith('bestmove')) {
+                    const moveStr = line.split(' ')[1];
+                    if (moveStr && moveStr !== '(none)') {
+                        handleStockfishResponse(moveStr);
+                    }
+                }
+            };
+        }
+
         document.getElementById('bottom-char-name').textContent = formatCharName(whiteChar);
         document.getElementById('top-char-name').textContent = formatCharName(blackChar);
 
@@ -112,7 +133,7 @@ function initGame() {
         game.reset();
         selectedSquare = null;
         updateBoard();
-        // Trigger AI if it's AI's turn first (white AI)
+
         scheduleAiTurnIfNeeded();
     });
 
@@ -121,7 +142,6 @@ function initGame() {
         document.getElementById('char-select-modal').style.display = 'flex';
     });
 
-    // Ability Button Listeners
     document.getElementById('bottom-ability-btn').addEventListener('click', () => handleAbilityClick('w'));
     document.getElementById('top-ability-btn').addEventListener('click', () => handleAbilityClick('b'));
 }
@@ -134,6 +154,7 @@ function formatCharName(charId) {
     if (charId === 'kirk') return 'Charlie Kirk';
     if (charId === 'noam') return 'Noam';
     if (charId === 'shlomo') return 'Shlomo';
+    if (charId === 'dvir') return 'Dvir';
     return '';
 }
 
@@ -151,7 +172,7 @@ function setupAbilityUI(color, side) {
     } else if (chars[color] === 'epstein') {
         btn.textContent = 'Buy Piece';
         status.textContent = 'Costs 3x Points';
-        btn.disabled = false; // Always enabled to toggle mode
+        btn.disabled = false;
     } else if (chars[color] === 'bibi') {
         btn.textContent = 'Ultimate Strike';
         status.textContent = '0/10 Moves';
@@ -201,7 +222,7 @@ function handleAbilityClick(color) {
             btn.classList.add('active');
             document.getElementById(`${side}-ability-status`).textContent = 'Trap Set!';
 
-            playSound('diddy'); // Generic sound hook
+            playSound('diddy');
         }
     } else if (chars[color] === 'kirk') {
         if (abilities[color].movesSinceUniSniper >= UNI_SNIPER_COOLDOWN && !abilities[color].uniSniperActive) {
@@ -375,7 +396,6 @@ function updateAbilityDisplay() {
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
         updateEpsteinBuyTargets(turnColor);
     }
-
 }
 
 function handleDragStart(e) {
@@ -383,7 +403,8 @@ function handleDragStart(e) {
     const turnColor = game.turn();
     const pieceColor = e.target.dataset.color;
 
-    if (pieceColor !== turnColor || abilities[turnColor].huntingMode) {
+    // FIX: Enforce human players and stop interaction while AI thinks
+    if (pieceColor !== turnColor || abilities[turnColor].huntingMode || playerTypes[turnColor] !== 'human' || aiThinking) {
         e.preventDefault();
         return;
     }
@@ -418,7 +439,6 @@ function handleDrop(e) {
 
 function handleSquareClick(sqId) {
     if (preventClick || game.game_over()) return;
-    // Block human input during AI turn
     const turnColor = game.turn();
     if (playerTypes[turnColor] !== 'human' || aiThinking) return;
     const piece = game.get(sqId);
@@ -452,8 +472,8 @@ function handleSquareClick(sqId) {
 
 function sqToCoords(sq) {
     return {
-        c: sq.charCodeAt(0) - 97, // a -> 0
-        r: parseInt(sq[1]) // 1-8
+        c: sq.charCodeAt(0) - 97,
+        r: parseInt(sq[1])
     };
 }
 function coordsToSq(c, r) {
@@ -468,7 +488,6 @@ function attemptMove(from, to) {
     const enemyColor = movingColor === 'w' ? 'b' : 'w';
     const piece = game.get(from);
 
-    // Handle Kirk Uni Sniper Custom Capture BEFORE standard move gen
     if (chars[movingColor] === 'kirk' && abilities[movingColor].uniSniperActive && piece && piece.type === 'p') {
         const fromC = sqToCoords(from);
         const toC = sqToCoords(to);
@@ -476,7 +495,6 @@ function attemptMove(from, to) {
         if (Math.abs(toC.c - fromC.c) === 2 && Math.abs(toC.r - fromC.r) === 2) {
             const dir = movingColor === 'w' ? 1 : -1;
             if (toC.r - fromC.r === 2 * dir) {
-                // Valid sniper direction
                 const interC = fromC.c + ((toC.c - fromC.c) / 2);
                 const interR = fromC.r + dir;
                 const interSq = coordsToSq(interC, interR);
@@ -484,16 +502,17 @@ function attemptMove(from, to) {
                 if (interSq && !game.get(interSq)) {
                     const targetPiece = game.get(to);
                     if (targetPiece && targetPiece.color !== movingColor && targetPiece.type !== 'k') {
-                        // Execute Sniper Capture
                         abilities[movingColor].uniSniperActive = false;
 
-                        // FEN manipulation teleport pawn
-                        const newFen = movePieceInFen(game.fen(), from, to);
+                        // Use true so that it flips the turn via movePieceInFen
+                        const newFen = movePieceInFen(game.fen(), from, to, true);
                         game.load(newFen);
 
                         postMoveLogic(movingColor);
                         playSound('snipe');
                         updateBoard();
+                        // FIX: Ensure AI gets scheduled after human plays!
+                        setTimeout(scheduleAiTurnIfNeeded, 500);
                         return true;
                     }
                 }
@@ -506,7 +525,7 @@ function attemptMove(from, to) {
 
     for (let m of moves) {
         if (m.from === from && m.to === to) {
-            moveObj = { from, to, promotion: 'q' };
+            moveObj = { from, to, promotion: m.promotion ? m.promotion : 'q' };
             break;
         }
     }
@@ -514,18 +533,16 @@ function attemptMove(from, to) {
     if (!moveObj) return false;
 
     let slipSquare = null;
+    let diddyTrapTriggered = false;
 
-    // Check if enemy has Diddy Trap active
     if (chars[enemyColor] === 'diddy' && abilities[enemyColor].babyOilActive) {
-        // Calculate direction vector
+        diddyTrapTriggered = true;
         const fromC = sqToCoords(from);
         const toC = sqToCoords(to);
 
-        // Calculate the raw delta
         const dc = toC.c - fromC.c;
         const dr = toC.r - fromC.r;
 
-        // Normalize direction mathematically (sign)
         const dirC = dc === 0 ? 0 : (dc > 0 ? 1 : -1);
         const dirR = dr === 0 ? 0 : (dr > 0 ? 1 : -1);
 
@@ -533,7 +550,6 @@ function attemptMove(from, to) {
         const potentialSlipSq = coordsToSq(slipTargetCoord.c, slipTargetCoord.r);
 
         if (potentialSlipSq) {
-            // Is it empty? (No capturing on slip)
             const pieceAtSlip = game.get(potentialSlipSq);
             if (!pieceAtSlip) {
                 slipSquare = potentialSlipSq;
@@ -542,32 +558,29 @@ function attemptMove(from, to) {
     }
 
     if (slipSquare) {
-        // We override the move entirely!
         game.move(moveObj);
-
-        // Manual slip FEN manipulation to bypass chess.js history/put bugs
         const fen = game.fen();
-        let newFen = movePieceInFen(fen, to, slipSquare);
 
-        // movePieceInFen automatically flips the turn, but game.move() already flipped it. 
-        // We must flip it back to prevent the same player from going twice.
-        let tokens = newFen.split(' ');
-        tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
-        game.load(tokens.join(' '));
+        // Pass false so movePieceInFen doesn't flip the turn (game.move already flipped it)
+        let newFen = movePieceInFen(fen, to, slipSquare, false);
+        game.load(newFen);
 
-        // Disable the trap
         abilities[enemyColor].babyOilActive = false;
 
         postMoveLogic(movingColor);
-        playSound('slip'); // generic slip
-        updateBoard(slipSquare); // animate slipping piece
+        playSound('slip');
+        updateBoard(slipSquare);
+        setTimeout(scheduleAiTurnIfNeeded, 500); // FIX: Ensure AI gets scheduled
         return true;
     } else {
-        // Standard normal move
         const move = game.move(moveObj);
         if (move) {
+            if (diddyTrapTriggered) {
+                abilities[enemyColor].babyOilActive = false;
+            }
             postMoveLogic(movingColor);
             updateBoard();
+            setTimeout(scheduleAiTurnIfNeeded, 500); // FIX: Ensure AI gets scheduled
             return true;
         }
     }
@@ -575,7 +588,8 @@ function attemptMove(from, to) {
     return false;
 }
 
-function movePieceInFen(fen, fromSq, toSq) {
+// FIX: Added 'flipTurn' parameter to ensure human/AI share identically calculated turns
+function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     let tokens = fen.split(' ');
     let rows = tokens[0].split('/');
 
@@ -603,10 +617,9 @@ function movePieceInFen(fen, fromSq, toSq) {
     const piece = grid[fromR][fromC];
     grid[fromR][fromC] = '';
 
-    // CRITICAL FIX: Prevent game crash if pawn teleports/slips to back rank
     let finalPiece = piece;
-    if (piece === 'p' && toR === 7) finalPiece = 'q'; // Black pawn promotes
-    if (piece === 'P' && toR === 0) finalPiece = 'Q'; // White pawn promotes
+    if (piece === 'p' && toR === 7) finalPiece = 'q';
+    if (piece === 'P' && toR === 0) finalPiece = 'Q';
 
     grid[toR][toC] = finalPiece;
 
@@ -630,8 +643,13 @@ function movePieceInFen(fen, fromSq, toSq) {
     }
 
     tokens[0] = newRows.join('/');
-    tokens[1] = tokens[1] === 'w' ? 'b' : 'w'; // Flip the turn character
-    tokens[3] = '-'; // Disable En Passant to be safe when teleporting pawns
+
+    // FIX: Respect turn flip correctly
+    if (flipTurn) {
+        tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
+    }
+
+    tokens[3] = '-';
     return tokens.join(' ');
 }
 
@@ -650,12 +668,10 @@ function postMoveLogic(colorWhoMoved) {
         }
     }
 
-    // Reset Epstein hunting mode off
     ['w', 'b'].forEach(c => {
         if (chars[c] === 'epstein') {
             abilities[c].huntingMode = false;
         }
-        // Consume Uni Sniper buff on any move
         abilities[c].uniSniperActive = false;
     });
 
@@ -663,7 +679,6 @@ function postMoveLogic(colorWhoMoved) {
     document.getElementById('bottom-ability-btn').classList.remove('active');
     document.getElementById('top-ability-btn').classList.remove('active');
 
-    // Make sure we re-apply active state classes if one of them has a trap set
     ['w', 'b'].forEach(c => {
         const side = c === 'w' ? 'bottom' : 'top';
         if (chars[c] === 'diddy' && abilities[c].babyOilActive) {
@@ -671,7 +686,6 @@ function postMoveLogic(colorWhoMoved) {
         }
     });
 
-    // Noam says his thing after every move
     if (chars[colorWhoMoved] === 'noam') {
         const side = colorWhoMoved === 'w' ? 'bottom' : 'top';
         const label = document.getElementById(`${side}-thinking`);
@@ -685,7 +699,6 @@ function postMoveLogic(colorWhoMoved) {
         }, 2000);
     }
 
-    // Shlomo wins for real after every move
     if (chars[colorWhoMoved] === 'shlomo') {
         setTimeout(() => {
             const modal = document.getElementById('game-over-modal');
@@ -713,7 +726,6 @@ function showValidMoves(sqId) {
         }
     });
 
-    // Uni Sniper custom hints
     if (chars[turnColor] === 'kirk' && abilities[turnColor].uniSniperActive && piece && piece.type === 'p') {
         const currCoord = sqToCoords(sqId);
         const dir = turnColor === 'w' ? 1 : -1;
@@ -725,13 +737,11 @@ function showValidMoves(sqId) {
         [targetC1, targetC2].forEach(tc => {
             const targetSq = coordsToSq(tc, targetR);
             if (targetSq) {
-                // Check if intermediate is empty
                 const interC = currCoord.c + ((tc - currCoord.c) / 2);
                 const interR = currCoord.r + dir;
                 const interSq = coordsToSq(interC, interR);
 
                 if (interSq && !game.get(interSq)) {
-                    // Check if target has ENEMY piece (not King)
                     const targetPiece = game.get(targetSq);
                     if (targetPiece && targetPiece.color !== turnColor && targetPiece.type !== 'k') {
                         document.getElementById(targetSq).classList.add('valid-capture');
@@ -747,8 +757,6 @@ function clearValidMoves() {
         sq.classList.remove('valid-move', 'valid-capture', 'selected', 'buy-target');
     });
 }
-
-// --- Abilities Implementations --- //
 
 function getCapturedPointsInfo(color) {
     const { capByWhite, capByBlack } = getMaterialBalance();
@@ -793,6 +801,9 @@ function attemptBuyPiece(buyerColor, targetSq, piece) {
         switchTurn();
         postMoveLogic(buyerColor);
         updateBoard();
+
+        // FIX: Ensure AI gets scheduled after a human uses an ability
+        setTimeout(scheduleAiTurnIfNeeded, 500);
     }
 }
 
@@ -842,6 +853,9 @@ function triggerBibiUltimate(color) {
     switchTurn();
     postMoveLogic(color);
     updateBoard();
+
+    // FIX: Ensure AI gets scheduled after a human uses an ability
+    setTimeout(scheduleAiTurnIfNeeded, 500);
 }
 
 function switchTurn() {
@@ -850,8 +864,6 @@ function switchTurn() {
     fenTokens[3] = '-';
     game.load(fenTokens.join(' '));
 }
-
-// --- Material Tracking ---
 
 function getMaterialBalance() {
     let white = 0;
@@ -943,10 +955,7 @@ function checkGameOver() {
     }
 }
 
-// Simple sound hook
 function playSound(hook) {
-    // We could play actual audio here. 
-    // Example: new Audio('assets/sounds/' + hook + '.mp3').play();
     console.log("Playing sound:", hook);
 }
 
@@ -962,8 +971,15 @@ function scheduleAiTurnIfNeeded() {
     document.getElementById(`${side}-thinking`).style.display = 'inline';
     document.getElementById(`${side}-ai-stats`).textContent = '';
 
-    // Small delay so the board renders before the AI thinks
     setTimeout(() => {
+        // Intercept Stockfish turns
+        if (playerTypes[color] === 'stockfish' && stockfishWorker) {
+            stockfishThinkingColor = color;
+            stockfishWorker.postMessage(`position fen ${game.fen()}`);
+            stockfishWorker.postMessage(`go movetime 1500`);
+            return;
+        }
+
         if (!aiWorker) { aiThinking = false; return; }
         aiWorker.postMessage({
             fen: game.fen(),
@@ -976,13 +992,11 @@ function scheduleAiTurnIfNeeded() {
 }
 
 function handleAiResponse(e) {
-    // Hide both thinking labels
     document.getElementById('top-thinking').style.display = 'none';
     document.getElementById('bottom-thinking').style.display = 'none';
 
     if (!e.data.success) {
         console.error('AI Error:', e.data.error);
-        // Clear the flag so the game isn't permanently frozen, then retry
         aiThinking = false;
         setTimeout(scheduleAiTurnIfNeeded, 500);
         return;
@@ -991,37 +1005,57 @@ function handleAiResponse(e) {
     const { isAbility, move, depth, evalScore } = e.data.result;
     const nodes = e.data.nodes;
 
-    // Capture the color BEFORE applying any move
     const color = game.turn();
-
-    // Display the stats
     const side = color === 'w' ? 'bottom' : 'top';
+
     if (depth !== undefined) {
         document.getElementById(`${side}-ai-stats`).textContent = `Depth: ${depth} | Eval: ${evalScore} | Nodes: ${nodes}`;
     }
 
-    // Clear the thinking flag only now, right before we apply the move
     aiThinking = false;
 
     if (isAbility) {
         executeAbilityMove(color, move);
     } else {
-        // CRITICAL FIX: The AI must use attemptMove so it slips on Diddy's oil!
         const success = attemptMove(move.from, move.to);
         if (!success) {
-            // Fallback just in case standard move gen failed
             const result = game.move({ from: move.from, to: move.to, promotion: 'q' });
             if (result) {
                 postMoveLogic(color);
                 updateBoard();
+
+                // FIX: Fallback AI move successfully completed, schedule next turn!
+                setTimeout(scheduleAiTurnIfNeeded, 500);
             }
         }
     }
-
-    // Schedule the next AI turn after a short delay
-    setTimeout(scheduleAiTurnIfNeeded, 500);
 }
+function handleStockfishResponse(uciMove) {
+    document.getElementById('top-thinking').style.display = 'none';
+    document.getElementById('bottom-thinking').style.display = 'none';
 
+    const color = stockfishThinkingColor;
+    const side = color === 'w' ? 'bottom' : 'top';
+    document.getElementById(`${side}-ai-stats`).textContent = `Engine: Stockfish 10`;
+
+    aiThinking = false;
+
+    const move = {
+        from: uciMove.substring(0, 2),
+        to: uciMove.substring(2, 4),
+        promotion: uciMove.length > 4 ? uciMove[4] : 'q'
+    };
+
+    const success = attemptMove(move.from, move.to);
+    if (!success) {
+        const result = game.move(move);
+        if (result) {
+            postMoveLogic(color);
+            updateBoard();
+            setTimeout(scheduleAiTurnIfNeeded, 500);
+        }
+    }
+}
 function executeAbilityMove(color, move) {
     if (move.abilityType === 'bibi_ultimate') {
         move.toKill.forEach(sq => game.remove(sq));
@@ -1030,6 +1064,7 @@ function executeAbilityMove(color, move) {
         postMoveLogic(color);
         playSound('bibi_ultimate');
         updateBoard();
+        setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'epstein_buy') {
         game.remove(move.sq);
@@ -1038,23 +1073,24 @@ function executeAbilityMove(color, move) {
         switchTurn();
         postMoveLogic(color);
         updateBoard();
+        setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'kirk_snipe') {
         abilities[color].uniSniperActive = false;
         abilities[color].movesSinceUniSniper = 0;
-        const newFen = movePieceInFen(game.fen(), move.from, move.to);
+        const newFen = movePieceInFen(game.fen(), move.from, move.to, true);
         game.load(newFen);
         postMoveLogic(color);
         playSound('snipe');
         updateBoard();
+        setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'diddy_baby_oil') {
-        // Baby oil is activated — now the AI must still make a normal move this same turn.
-        // We send the worker another request immediately (aiThinking was already cleared above).
         abilities[color].babyOilActive = true;
         abilities[color].movesSinceBabyOil = 0;
-        updateBoard(); // show trap-active UI
-        // Re-run the AI for the normal move on the same turn
+        updateBoard();
+
+        // This is correct as 300ms because baby oil sets the trap but doesn't end the turn.
         setTimeout(scheduleAiTurnIfNeeded, 300);
     }
 }
