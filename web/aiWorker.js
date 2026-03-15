@@ -233,19 +233,38 @@ function getAbilityMoves(fen, chars, abilities, color) {
 
     if (char === 'aheud' && ab.movesSinceSmoke >= 5 && !ab.smokeActive) {
         const enemyColor = color === 'w' ? 'b' : 'w';
-        let targetSq = null;
+        let bestSq = null;
+        let bestScore = -1;
         const boardState = game.board();
-        // The AI will aggressively smoke bomb the enemy King
+
+        // Evaluate every square to find the best 3x3 smoke coverage
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                const p = boardState[r][c];
-                if (p && p.color === enemyColor && p.type === 'k') {
-                    targetSq = String.fromCharCode(97 + c) + (8 - r);
+                let score = 0;
+                // Check the 3x3 area around this square
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        const nr = r + dr;
+                        const nc = c + dc;
+                        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+                            const p = boardState[nr][nc];
+                            if (p) {
+                                score += 1; // +1 point for any piece in the smoke
+                                if (p.color === enemyColor && p.type === 'k') {
+                                    score += 5; // +5 points if it covers the enemy king!
+                                }
+                            }
+                        }
+                    }
+                }
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestSq = String.fromCharCode(97 + c) + (8 - r);
                 }
             }
         }
-        if (targetSq) {
-            moves.push({ abilityType: 'aheud_smoke', sq: targetSq, color });
+        if (bestSq) {
+            moves.push({ abilityType: 'aheud_smoke', sq: bestSq, color });
         }
     }
 
@@ -285,6 +304,12 @@ function evaluate(game, chars, abilities) {
             const bankValue = unspent * 50;
             if (c === 'w') score += bankValue;
             else score -= bankValue;
+        }
+        if (chars && chars[c] === 'aheud' && abilities && abilities[c].smokeActive) {
+            // Tell the AI that having smoke active is worth an artificial +5 pawns!
+            const smokeBonus = 500;
+            if (c === 'w') score += smokeBonus;
+            else score -= smokeBonus;
         }
     });
 
