@@ -77,6 +77,7 @@ document.getElementById('btn-confirm-0p').addEventListener('click', () => {
 // The final handoff to the Character Selection screen
 function proceedToCharSelect() {
     document.getElementById('local-mode-menu').style.display = 'none';
+    document.getElementById('game-container').style.display = 'flex';
 
     // Hide the original AI dropdowns in the Character Select modal to keep it clean!
     document.querySelectorAll('.player-type-row').forEach(row => {
