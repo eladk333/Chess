@@ -97,6 +97,15 @@ document.getElementById('btn-multiplayer').addEventListener('click', () => {
     document.getElementById('room-display').textContent = '';
     document.getElementById('room-code-input').value = '';
 });
+function syncCustomState() {
+    if (currentRoom && gameMode === 'multi') {
+        socket.emit('sync_custom_state', {
+            roomId: currentRoom,
+            fen: game.fen(),
+            abilities: abilities
+        });
+    }
+}
 
 // --- Multiplayer UI Wiring ---
 document.getElementById('create-room-btn').addEventListener('click', () => {
@@ -144,8 +153,17 @@ document.getElementById('game-container').style.display = 'flex';
 socket.on('state_update', (data) => {
     game.load(data.fen);
     updateBoard();
+    scheduleAiTurnIfNeeded();
 });
-
+socket.on('sync_custom_state', (data) => {
+    game.load(data.fen);
+    // Must mutate in-place since abilities is const
+    if (data.abilities) {
+        Object.assign(abilities.w, data.abilities.w);
+        Object.assign(abilities.b, data.abilities.b);
+    }
+    updateBoard();
+});
 socket.on('invalid_move', (data) => {
     game.load(data.fen);
     updateBoard();
@@ -160,11 +178,15 @@ function startGameFlow(selectedChars) {
     chars.w = selectedChars.w;
     chars.b = selectedChars.b;
 
-    playerTypes.w = document.getElementById('white-ai-type').value;
-    playerTypes.b = document.getElementById('black-ai-type').value;
-
-    if (chars.w === 'dvir') playerTypes.w = 'stockfish';
-    if (chars.b === 'dvir') playerTypes.b = 'stockfish';
+    if (gameMode !== 'multi') {
+        playerTypes.w = document.getElementById('white-ai-type').value;
+        playerTypes.b = document.getElementById('black-ai-type').value;
+        if (chars.w === 'dvir') playerTypes.w = 'stockfish';
+        if (chars.b === 'dvir') playerTypes.b = 'stockfish';
+    } else {
+        playerTypes.w = 'human';
+        playerTypes.b = 'human';
+    }
 
     abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false };
     abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false };
@@ -358,6 +380,7 @@ function setupAbilityUI(color, side) {
 }
 
 function handleAbilityClick(color) {
+    if (gameMode === 'multi' && color !== myColor) return;
     if (game.turn() !== color) return;
 
     if (chars[color] === 'epstein') {
@@ -390,6 +413,7 @@ function handleAbilityClick(color) {
             btn.classList.add('active');
             document.getElementById(`${side}-ability-status`).textContent = 'Trap Set!';
 
+            syncCustomState();
             playSound('diddy');
         }
     } else if (chars[color] === 'kirk') {
@@ -403,6 +427,7 @@ function handleAbilityClick(color) {
             btn.classList.add('active');
             document.getElementById(`${side}-ability-status`).textContent = 'Active!';
 
+            syncCustomState();
             playSound('kirk');
         }
     } else if (chars[color] === 'aheud') {
@@ -507,6 +532,7 @@ function updateBoard(animateSlipForSquare = null) {
                 const typeStr = pieceMap[piece.type];
 
                 pieceEl.style.backgroundImage = `url('assets/${colorStr}-${typeStr}.png')`;
+                pieceEl.style.pointerEvents = 'none';
                 pieceEl.dataset.square = sqId;
                 pieceEl.dataset.color = piece.color;
 
@@ -676,6 +702,7 @@ function handleSquareClick(sqId) {
         document.getElementById(`${getSide(turnColor)}-ability-btn`).classList.remove('ready', 'active');
 
         playSound('smoke');
+        syncCustomState();
         updateBoard();
         return;
     }
@@ -747,10 +774,11 @@ function attemptMove(from, to) {
                         const newFen = movePieceInFen(game.fen(), from, to, true);
                         game.load(newFen);
                         postMoveLogic(movingColor);
-                        playSound('snipe');
-                        updateBoard();
-                        setTimeout(scheduleAiTurnIfNeeded, 500);
-                        return true;
+    playSound('snipe');
+    updateBoard();
+    syncCustomState(); // Add this line here
+    setTimeout(scheduleAiTurnIfNeeded, 500);
+    return true;
                     }
                 }
             }
@@ -807,11 +835,16 @@ function attemptMove(from, to) {
         game.load(newFen);
         abilities[enemyColor].babyOilActive = false;
         postMoveLogic(movingColor);
+        syncCustomState();
         playSound('slip');
         updateBoard(slipSquare);
         setTimeout(scheduleAiTurnIfNeeded, 500);
         return true;
     } else {
+        if (currentRoom) {
+            // In multiplayer, the server applies and echoes back via state_update — don't apply locally
+            return true;
+        }
         const move = game.move(moveObj);
         if (move) {
             if (diddyTrapTriggered) {
@@ -954,12 +987,15 @@ function postMoveLogic(colorWhoMoved) {
         }
     }
 
-    ['w', 'b'].forEach(c => {
+   ['w', 'b'].forEach(c => {
         if (chars[c] === 'epstein') {
             abilities[c].huntingMode = false;
         }
-        abilities[c].uniSniperActive = false;
-        abilities[c].targetingSmoke = false;
+        // Only cancel sniper/smoke-targeting for the color that just moved
+        if (c === colorWhoMoved) {
+            abilities[c].uniSniperActive = false;
+            abilities[c].targetingSmoke = false;
+        }
     });
 
     document.body.classList.remove('hunting-mode', 'targeting-smoke');
@@ -1100,8 +1136,8 @@ function attemptBuyPiece(buyerColor, targetSq) {
     game.put({ type: targetPiece.type, color: buyerColor }, targetSq);
     switchTurn();
     postMoveLogic(buyerColor);
+    syncCustomState();
     updateBoard();
-
     setTimeout(scheduleAiTurnIfNeeded, 500);
     return true;
 }
@@ -1151,8 +1187,8 @@ function triggerBibiUltimate(color) {
 
     switchTurn();
     postMoveLogic(color);
+    syncCustomState();
     updateBoard();
-
     setTimeout(scheduleAiTurnIfNeeded, 500);
 }
 
@@ -1367,6 +1403,7 @@ function executeAbilityMove(color, move) {
         switchTurn();
         postMoveLogic(color);
         playSound('bibi_ultimate');
+        syncCustomState();
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);
 
@@ -1390,6 +1427,7 @@ function executeAbilityMove(color, move) {
     abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
     switchTurn();
     postMoveLogic(color);
+    syncCustomState();
     updateBoard();
     setTimeout(scheduleAiTurnIfNeeded, 500);
 
@@ -1400,12 +1438,14 @@ function executeAbilityMove(color, move) {
         game.load(newFen);
         postMoveLogic(color);
         playSound('snipe');
+        syncCustomState();
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'diddy_baby_oil') {
         abilities[color].babyOilActive = true;
         abilities[color].movesSinceBabyOil = 0;
+        syncCustomState();
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 300);
 
@@ -1415,6 +1455,7 @@ function executeAbilityMove(color, move) {
         abilities[color].movesSinceSmoke = 0;
         abilities[color].smokeCenterSq = move.sq;
 
+        syncCustomState();
         playSound('smoke');
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 300);

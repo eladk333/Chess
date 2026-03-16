@@ -15,7 +15,13 @@ const games = {};
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
-
+    socket.on('sync_custom_state', (data) => {
+        const game = games[data.roomId];
+        if (game) {
+            try { game.chess.load(data.fen); } catch(e) {}
+        }
+        socket.to(data.roomId).emit('sync_custom_state', data);
+    });
     // Player 1 creates a room
     socket.on('create_room', () => {
         const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -47,6 +53,9 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('opponent_ready', () => {
+    document.getElementById('room-display').textContent = 'Opponent is ready! Waiting for you...';
+});
     // Handle character selection readiness
     socket.on('player_ready', ({ roomId, charId }) => {
         const game = games[roomId];
@@ -55,30 +64,8 @@ io.on('connection', (socket) => {
         const color = game.players.w === socket.id ? 'w' : 'b';
         game.chars[color] = charId;
 
-        // Track who is ready
-        game.ready = game.ready || { w: false, b: false };
         game.ready[color] = true;
 
-        // If both are ready, start the match!
-        if (game.ready.w && game.ready.b) {
-            io.to(roomId).emit('both_ready', game.chars);
-        } else {
-            socket.to(roomId).emit('opponent_ready');
-        }
-    });
-    // Handle character selection readiness
-    socket.on('player_ready', ({ roomId, charId }) => {
-        const game = games[roomId];
-        if (!game) return;
-
-        const color = game.players.w === socket.id ? 'w' : 'b';
-        game.chars[color] = charId;
-
-        // Track who is ready
-        game.ready = game.ready || { w: false, b: false };
-        game.ready[color] = true;
-
-        // If both are ready, start the match!
         if (game.ready.w && game.ready.b) {
             io.to(roomId).emit('both_ready', game.chars);
         } else {
