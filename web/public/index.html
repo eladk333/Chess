@@ -66,8 +66,9 @@
                 <div style="text-align: left; margin-bottom: 25px;">
                     <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">Opponent AI:</label>
                     <select id="1p-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
+                       <option value="minimax">Minimax AI</option>
                         <option value="random">Random AI</option>
-                        <option value="minimax">Minimax AI</option>
+                        
                     </select>
                 </div>
 
@@ -82,16 +83,18 @@
                 <div style="text-align: left; margin-bottom: 15px;">
                     <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">White AI:</label>
                     <select id="0p-w-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
-                        <option value="random">Random AI</option>
+                        
                         <option value="minimax">Minimax AI</option>
+                        <option value="random">Random AI</option>
                     </select>
                 </div>
 
                 <div style="text-align: left; margin-bottom: 25px;">
                     <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">Black AI:</label>
                     <select id="0p-b-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
-                        <option value="random">Random AI</option>
+                     
                         <option value="minimax">Minimax AI</option>
+                           <option value="random">Random AI</option>
                     </select>
                 </div>
 
@@ -104,19 +107,33 @@
 
         </div>
     </div>
-    <div id="multiplayer-menu"
-        style="display: none; background: #333; padding: 15px; margin-bottom: 15px; text-align: center; border-radius: 8px; width: min(640px, 96vw);">
-        <button id="create-room-btn" class="menu-btn" style="width: auto; margin-right: 10px;">Create Room</button>
+    <div id="multiplayer-menu">
+    <div class="multiplayer-card">
+        <div class="multiplayer-badge">Online Multiplayer</div>
+        <h2 class="multiplayer-title">Play a friend in a private room</h2>
+        <p class="multiplayer-subtitle">
+            Create a room and share the code, or join an existing room in seconds.
+        </p>
 
-        <span style="margin: 0 10px; font-weight: bold;">OR</span>
+        <div class="multiplayer-actions">
+            <button id="create-room-btn" class="menu-btn multiplayer-primary-btn">Create Room</button>
 
-        <input type="text" id="room-code-input" placeholder="Enter Code"
-            style="padding: 10px; border-radius: 5px; border: none; width: 100px;">
-        <button id="join-room-btn" class="menu-btn" style="width: auto; margin-left: 10px;">Join Room</button>
+            <div class="multiplayer-divider">
+                <span></span>
+                <strong>OR</strong>
+                <span></span>
+            </div>
 
-        <div id="room-display" style="margin-top: 15px; font-size: 1.2rem; font-weight: bold; color: #f0c040;"></div>
+            <div class="multiplayer-join-row">
+                <input type="text" id="room-code-input" placeholder="Enter room code" maxlength="10">
+                <button id="join-room-btn" class="menu-btn multiplayer-secondary-btn">Join Room</button>
+            </div>
+        </div>
+
+        <div id="room-display" class="multiplayer-status"></div>
     </div>
-    <div id="game-container">
+</div>
+    <div id="game-container" style="display: none;">
         <div class="player-info top-player">
             <div class="player-details">
                 <div class="avatar" id="top-avatar"></div>
@@ -167,8 +184,9 @@
                         <label>Play as:</label>
                         <select id="white-ai-type" class="ai-type-select">
                             <option value="human">Human</option>
-                            <option value="random">Random AI</option>
+                            
                             <option value="minimax">Minimax AI</option>
+                            <option value="random">Random AI</option>
                         </select>
                     </div>
                     <div class="char-options" id="white-char-options">
@@ -252,8 +270,9 @@
                         <label>Play as:</label>
                         <select id="black-ai-type" class="ai-type-select">
                             <option value="human">Human</option>
-                            <option value="random">Random AI</option>
+                           
                             <option value="minimax">Minimax AI</option>
+                             <option value="random">Random AI</option>
                         </select>
                     </div>
                     <div class="char-options" id="black-char-options">

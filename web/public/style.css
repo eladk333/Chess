@@ -549,7 +549,18 @@ body.hunting-mode .piece {
         align-items: flex-start;
         padding: 8px 0;
     }
+        .multiplayer-card {
+        padding: 28px 20px;
+        border-radius: 18px;
+    }
 
+    .multiplayer-join-row {
+        grid-template-columns: 1fr;
+    }
+
+    .multiplayer-title {
+        font-size: 1.9rem;
+    }
     #game-container {
         width: var(--board-size);
         gap: 6px;
@@ -746,4 +757,119 @@ body.targeting-smoke .piece {
         padding: 6px 8px;
         gap: 6px;
     }
+}
+#multiplayer-menu {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 320;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at top, rgba(240, 192, 64, 0.10), transparent 30%),
+        linear-gradient(180deg, #191919 0%, #101010 100%);
+}
+
+.multiplayer-card {
+    width: min(720px, 92vw);
+    padding: 40px 36px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px);
+    text-align: center;
+}
+
+.multiplayer-badge {
+    display: inline-block;
+    margin-bottom: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(240, 192, 64, 0.12);
+    border: 1px solid rgba(240, 192, 64, 0.25);
+    color: #f0c040;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.multiplayer-title {
+    margin: 0 0 10px;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.multiplayer-subtitle {
+    margin: 0 auto 28px;
+    max-width: 560px;
+    color: #b8b8b8;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+.multiplayer-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.multiplayer-primary-btn,
+.multiplayer-secondary-btn {
+    width: 100%;
+}
+
+.multiplayer-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #8f8f8f;
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+}
+
+.multiplayer-divider span {
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.10);
+}
+
+.multiplayer-join-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+}
+
+#room-code-input {
+    width: 100%;
+    min-width: 0;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #4c4c4c;
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+#room-code-input:focus {
+    border-color: #f0c040;
+    box-shadow: 0 0 0 4px rgba(240, 192, 64, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#room-code-input::placeholder {
+    color: #8b8b8b;
+}
+
+.multiplayer-status {
+    min-height: 28px;
+    margin-top: 20px;
+    color: #f0c040;
+    font-weight: 700;
+    font-size: 1rem;
 }

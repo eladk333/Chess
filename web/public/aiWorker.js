@@ -192,12 +192,18 @@ function getAbilityMoves(fen, chars, abilities, color) {
             for (let c = 0; c < 8; c++) {
                 const p = boardState[r][c];
                 if (p && p.color === enemyColor && p.type !== 'k') {
-                    const frontendCost = (FRONTEND_VALUES[p.type] || 0) * 3;
-                    if (availablePts >= frontendCost) {
-                        const sq = String.fromCharCode(97 + c) + (8 - r);
-                        moves.push({ abilityType: 'epstein_buy', sq, piece: p, frontendCost, color });
-                    }
-                }
+    const frontendCost = (FRONTEND_VALUES[p.type] || 0) * 3;
+    if (availablePts >= frontendCost) {
+        const sq = String.fromCharCode(97 + c) + (8 - r);
+        moves.push({
+            abilityType: 'epstein_buy',
+            sq,
+            pieceType: p.type,
+            frontendCost,
+            color
+        });
+    }
+}
             }
         }
     }
@@ -275,12 +281,20 @@ function applyAbilityMove(fen, move) {
     if (move.abilityType === 'bibi_ultimate') {
         move.toKill.forEach(sq => game.remove(sq));
     } else if (move.abilityType === 'epstein_buy') {
-        game.remove(move.sq);
-        // Bulletproof piece checking
-        if (move.piece && move.piece.type) {
-            game.put({ type: move.piece.type, color: move.color }, move.sq);
-        }
-    } else if (move.abilityType === 'kirk_snipe') {
+    const targetPiece = game.get(move.sq);
+
+    if (
+        !targetPiece ||
+        targetPiece.color === move.color ||
+        targetPiece.type === 'k' ||
+        targetPiece.type !== move.pieceType
+    ) {
+        return fen;
+    }
+
+    game.remove(move.sq);
+    game.put({ type: move.pieceType, color: move.color }, move.sq);
+} else if (move.abilityType === 'kirk_snipe') {
         return movePieceInFen(game.fen(), move.from, move.to, true);
     } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
         return fen;
@@ -606,7 +620,7 @@ function minimaxBestMove(fen, chars, abilities, color) {
             finalDisplayScore = displayScore;
         } catch (e) {
             if (e === 'timeout') {
-                console.log(`[Minimax] Timeout hit! Stopped during depth ${depth}. Final chosen move from depth ${depth - 1}.`);
+                //console.log(`[Minimax] Timeout hit! Stopped during depth ${depth}. Final chosen move from depth ${depth - 1}.`);
                 break;
             }
             throw e;

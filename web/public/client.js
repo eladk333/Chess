@@ -91,7 +91,10 @@ function proceedToCharSelect() {
 document.getElementById('btn-multiplayer').addEventListener('click', () => {
     gameMode = 'multi';
     document.getElementById('main-menu').style.display = 'none';
-    document.getElementById('multiplayer-menu').style.display = 'block';
+    document.getElementById('game-container').style.display = 'none';
+    document.getElementById('multiplayer-menu').style.display = 'flex';
+    document.getElementById('room-display').textContent = '';
+    document.getElementById('room-code-input').value = '';
 });
 
 // --- Multiplayer UI Wiring ---
@@ -120,7 +123,8 @@ socket.on('player_color', (color) => {
 // --- Game Loop Sync ---
 socket.on('game_start', (data) => {
     game.load(data.fen);
-    document.getElementById('multiplayer-menu').style.display = 'none';
+document.getElementById('multiplayer-menu').style.display = 'none';
+document.getElementById('game-container').style.display = 'flex';
 
     // UI FIX: Hide the character column of the opponent!
     if (myColor === 'w') {
@@ -675,11 +679,11 @@ function handleSquareClick(sqId) {
         return;
     }
     if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
-        if (piece && piece.color !== turnColor && piece.type !== 'k') {
-            attemptBuyPiece(turnColor, sqId, piece);
-        }
-        return;
+    if (piece && piece.color !== turnColor && piece.type !== 'k') {
+        attemptBuyPiece(turnColor, sqId);
     }
+    return;
+}
 
     if (selectedSquare) {
         const moveAttempt = attemptMove(selectedSquare, sqId);
@@ -1072,20 +1076,33 @@ function updateEpsteinBuyTargets(color) {
     }
 }
 
-function attemptBuyPiece(buyerColor, targetSq, piece) {
-    const { pointsAvailable } = getCapturedPointsInfo(buyerColor);
-    const cost = PIECE_VALUES[piece.type] * 3;
+function attemptBuyPiece(buyerColor, targetSq) {
+    const targetPiece = game.get(targetSq);
 
-    if (pointsAvailable >= cost) {
-        abilities[buyerColor].spentPoints = (abilities[buyerColor].spentPoints || 0) + cost;
-        game.remove(targetSq);
-        game.put({ type: piece.type, color: buyerColor }, targetSq);
-        switchTurn();
-        postMoveLogic(buyerColor);
-        updateBoard();
-
-        setTimeout(scheduleAiTurnIfNeeded, 500);
+    if (
+        !targetPiece ||
+        targetPiece.color === buyerColor ||
+        targetPiece.type === 'k'
+    ) {
+        return false;
     }
+
+    const { pointsAvailable } = getCapturedPointsInfo(buyerColor);
+    const cost = PIECE_VALUES[targetPiece.type] * 3;
+
+    if (pointsAvailable < cost) {
+        return false;
+    }
+
+    abilities[buyerColor].spentPoints = (abilities[buyerColor].spentPoints || 0) + cost;
+    game.remove(targetSq);
+    game.put({ type: targetPiece.type, color: buyerColor }, targetSq);
+    switchTurn();
+    postMoveLogic(buyerColor);
+    updateBoard();
+
+    setTimeout(scheduleAiTurnIfNeeded, 500);
+    return true;
 }
 
 function triggerBibiUltimate(color) {
@@ -1353,13 +1370,27 @@ function executeAbilityMove(color, move) {
         setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'epstein_buy') {
-        game.remove(move.sq);
-        game.put({ type: move.piece.type, color: color }, move.sq);
-        abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
-        switchTurn();
-        postMoveLogic(color);
-        updateBoard();
-        setTimeout(scheduleAiTurnIfNeeded, 500);
+    const targetPiece = game.get(move.sq);
+    const availablePts = getCapturedPointsInfo(color).pointsAvailable;
+
+    if (
+        !targetPiece ||
+        targetPiece.color === color ||
+        targetPiece.type === 'k' ||
+        targetPiece.type !== move.pieceType ||
+        availablePts < move.frontendCost
+    ) {
+        setTimeout(scheduleAiTurnIfNeeded, 0);
+        return;
+    }
+
+    game.remove(move.sq);
+    game.put({ type: move.pieceType, color: color }, move.sq);
+    abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
+    switchTurn();
+    postMoveLogic(color);
+    updateBoard();
+    setTimeout(scheduleAiTurnIfNeeded, 500);
 
     } else if (move.abilityType === 'kirk_snipe') {
         abilities[color].uniSniperActive = false;
