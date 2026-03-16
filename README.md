@@ -2,10 +2,12 @@
 
 ## To start the game  
 ```bash
-py -m http.server 8000
+npm init -y
+npm install express socket.io chess.js
+node server.js
 ```
 
 ## Then head over to 
 ```
-http://localhost:8000/web/
+http://localhost:3000
 ```
