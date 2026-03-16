@@ -53,9 +53,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('opponent_ready', () => {
-    document.getElementById('room-display').textContent = 'Opponent is ready! Waiting for you...';
-});
+    
     // Handle character selection readiness
     socket.on('player_ready', ({ roomId, charId }) => {
         const game = games[roomId];
@@ -89,7 +87,8 @@ io.on('connection', (socket) => {
             if (result) {
                 io.to(roomId).emit('state_update', {
                     fen: game.chess.fen(),
-                    turn: game.chess.turn()
+                    turn: game.chess.turn(),
+                    lastMoveColor: turn
                 });
             } else {
                 socket.emit('invalid_move', { fen: game.chess.fen() });

@@ -152,6 +152,11 @@ document.getElementById('game-container').style.display = 'flex';
 
 socket.on('state_update', (data) => {
     game.load(data.fen);
+    // Run postMoveLogic for whoever just moved — both players need it
+    // skipSync=true so we don't trigger a loop
+    if (data.lastMoveColor) {
+        postMoveLogic(data.lastMoveColor, true);
+    }
     updateBoard();
     scheduleAiTurnIfNeeded();
 });
@@ -172,6 +177,9 @@ socket.on('invalid_move', (data) => {
 // When both players are ready, initialize game abilities and draw characters
 socket.on('both_ready', (serverChars) => {
     startGameFlow(serverChars);
+});
+socket.on('opponent_ready', () => {
+    document.getElementById('room-display').textContent = 'Opponent is ready! Waiting for you...';
 });
 
 function startGameFlow(selectedChars) {
@@ -653,7 +661,7 @@ function handleDragStart(e) {
     const turnColor = game.turn();
     const pieceColor = e.target.dataset.color;
 
-    if (pieceColor !== turnColor || abilities[turnColor].huntingMode || playerTypes[turnColor] !== 'human' || aiThinking) {
+    if (pieceColor !== turnColor || abilities[turnColor].huntingMode || playerTypes[turnColor] !== 'human' || aiThinking || (gameMode === 'multi' && turnColor !== myColor)) {
         e.preventDefault();
         return;
     }
@@ -691,7 +699,7 @@ function handleSquareClick(sqId) {
     const turnColor = game.turn();
     if (playerTypes[turnColor] !== 'human' || aiThinking) return;
     const piece = game.get(sqId);
-    if (chars[turnColor] === 'aheud' && abilities[turnColor].targetingSmoke) {
+    if (chars[turnColor] === 'aheud' && abilities[turnColor].targetingSmoke && (gameMode !== 'multi' || turnColor === myColor)) {
         abilities[turnColor].targetingSmoke = false;
         abilities[turnColor].smokeActive = true;
         abilities[turnColor].smokeRemainingMoves = 4;
@@ -706,7 +714,7 @@ function handleSquareClick(sqId) {
         updateBoard();
         return;
     }
-    if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode) {
+    if (chars[turnColor] === 'epstein' && abilities[turnColor].huntingMode && (gameMode !== 'multi' || turnColor === myColor)) {
     if (piece && piece.color !== turnColor && piece.type !== 'k') {
         attemptBuyPiece(turnColor, sqId);
     }
@@ -773,10 +781,10 @@ function attemptMove(from, to) {
                         abilities[movingColor].uniSniperActive = false;
                         const newFen = movePieceInFen(game.fen(), from, to, true);
                         game.load(newFen);
-                        postMoveLogic(movingColor);
-    playSound('snipe');
-    updateBoard();
-    syncCustomState(); // Add this line here
+                        postMoveLogic(movingColor, true);
+                        playSound('snipe');
+                        updateBoard();
+                        syncCustomState();
     setTimeout(scheduleAiTurnIfNeeded, 500);
     return true;
                     }
@@ -791,22 +799,10 @@ function attemptMove(from, to) {
 
     if (!moveObj) return false;
 
-    // --- MULTIPLAYER SYNC ---
-    // Send the move to the server immediately
-    if (currentRoom) {
-        socket.emit('make_move', {
-            roomId: currentRoom,
-            move: { from, to, promotion: moveObj.promotion || 'q' }
-        });
-    }
-    // ------------------------
-
     // --- CUSTOM ABILITIES (Diddy Baby Oil) ---
     let slipSquare = null;
-    let diddyTrapTriggered = false;
 
     if (chars[enemyColor] === 'diddy' && abilities[enemyColor].babyOilActive) {
-        diddyTrapTriggered = true;
         const fromC = sqToCoords(from);
         const toC = sqToCoords(to);
 
@@ -829,27 +825,29 @@ function attemptMove(from, to) {
 
     // --- APPLY THE MOVE ---
     if (slipSquare) {
+        // Slip: apply locally and sync to opponent — do NOT emit make_move (server would overwrite with the wrong FEN)
         game.move(moveObj);
         const fen = game.fen();
         let newFen = movePieceInFen(fen, to, slipSquare, false);
         game.load(newFen);
         abilities[enemyColor].babyOilActive = false;
-        postMoveLogic(movingColor);
+        postMoveLogic(movingColor, true);
         syncCustomState();
         playSound('slip');
         updateBoard(slipSquare);
         setTimeout(scheduleAiTurnIfNeeded, 500);
         return true;
+    } else if (currentRoom) {
+        // Multiplayer normal move: send to server, it echoes back via state_update — don't apply locally
+        socket.emit('make_move', {
+            roomId: currentRoom,
+            move: { from, to, promotion: moveObj.promotion || 'q' }
+        });
+        return true;
     } else {
-        if (currentRoom) {
-            // In multiplayer, the server applies and echoes back via state_update — don't apply locally
-            return true;
-        }
+        // Singleplayer: apply locally
         const move = game.move(moveObj);
         if (move) {
-            if (diddyTrapTriggered) {
-                abilities[enemyColor].babyOilActive = false;
-            }
             postMoveLogic(movingColor);
             updateBoard();
             setTimeout(scheduleAiTurnIfNeeded, 500);
@@ -923,7 +921,7 @@ function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     return tokens.join(' ');
 }
 
-function postMoveLogic(colorWhoMoved) {
+function postMoveLogic(colorWhoMoved, skipSync = false) {
     const hist = game.history({ verbose: true });
     const lastMove = hist.length > 0 ? hist[hist.length - 1] : null;
     const isCapture = lastMove && (lastMove.flags.includes('c') || lastMove.flags.includes('e'));
@@ -1031,6 +1029,10 @@ function postMoveLogic(colorWhoMoved) {
             modal.classList.remove('hidden');
         }, 400);
     }
+
+    if (!skipSync) {
+        syncCustomState();
+    }
 }
 
 function showValidMoves(sqId) {
@@ -1135,7 +1137,7 @@ function attemptBuyPiece(buyerColor, targetSq) {
     game.remove(targetSq);
     game.put({ type: targetPiece.type, color: buyerColor }, targetSq);
     switchTurn();
-    postMoveLogic(buyerColor);
+    postMoveLogic(buyerColor, true);
     syncCustomState();
     updateBoard();
     setTimeout(scheduleAiTurnIfNeeded, 500);
@@ -1186,7 +1188,7 @@ function triggerBibiUltimate(color) {
     document.getElementById(btnId).classList.remove('ready', 'active');
 
     switchTurn();
-    postMoveLogic(color);
+    postMoveLogic(color, true);
     syncCustomState();
     updateBoard();
     setTimeout(scheduleAiTurnIfNeeded, 500);
@@ -1401,7 +1403,7 @@ function executeAbilityMove(color, move) {
         move.toKill.forEach(sq => game.remove(sq));
         abilities[color].movesSinceLastUltimate = 0;
         switchTurn();
-        postMoveLogic(color);
+        postMoveLogic(color, true);
         playSound('bibi_ultimate');
         syncCustomState();
         updateBoard();
@@ -1426,7 +1428,7 @@ function executeAbilityMove(color, move) {
     game.put({ type: move.pieceType, color: color }, move.sq);
     abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
     switchTurn();
-    postMoveLogic(color);
+    postMoveLogic(color, true);
     syncCustomState();
     updateBoard();
     setTimeout(scheduleAiTurnIfNeeded, 500);
@@ -1436,7 +1438,7 @@ function executeAbilityMove(color, move) {
         abilities[color].movesSinceUniSniper = 0;
         const newFen = movePieceInFen(game.fen(), move.from, move.to, true);
         game.load(newFen);
-        postMoveLogic(color);
+        postMoveLogic(color, true);
         playSound('snipe');
         syncCustomState();
         updateBoard();
