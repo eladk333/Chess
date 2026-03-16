@@ -1,5 +1,5 @@
 // ============================================================
-// aiWorker.js - Upgraded Chess AI Web Worker (Bulletproofed)
+// aiWorker.js - Upgraded Chess AI Web Worker (Fully Bulletproofed)
 // ============================================================
 
 importScripts('https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js');
@@ -139,7 +139,8 @@ function getEpsteinPoints(fen, color, spentPoints) {
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const p = board[r][c];
-            if (p && p.color === enemy && p.type !== 'k') counts[p.type]++;
+            // Safe traversal applied
+            if (p?.color === enemy && p?.type && p.type !== 'k') counts[p.type]++;
         }
     }
     let pts = 0;
@@ -163,7 +164,8 @@ function getAbilityMoves(fen, chars, abilities, color) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const p = boardState[r][c];
-                if (p && p.color === enemyColor && p.type !== 'k') {
+                // Safe traversal applied
+                if (p?.color === enemyColor && p?.type && p.type !== 'k') {
                     const sqCode = String.fromCharCode(97 + c) + (8 - r);
                     game.remove(sqCode);
                     game.put({ type: p.type, color: color }, sqCode);
@@ -191,19 +193,20 @@ function getAbilityMoves(fen, chars, abilities, color) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const p = boardState[r][c];
-                if (p && p.color === enemyColor && p.type !== 'k') {
-    const frontendCost = (FRONTEND_VALUES[p.type] || 0) * 3;
-    if (availablePts >= frontendCost) {
-        const sq = String.fromCharCode(97 + c) + (8 - r);
-        moves.push({
-            abilityType: 'epstein_buy',
-            sq,
-            pieceType: p.type,
-            frontendCost,
-            color
-        });
-    }
-}
+                // Safe traversal applied
+                if (p?.color === enemyColor && p?.type && p.type !== 'k') {
+                    const frontendCost = (FRONTEND_VALUES[p.type] || 0) * 3;
+                    if (availablePts >= frontendCost) {
+                        const sq = String.fromCharCode(97 + c) + (8 - r);
+                        moves.push({
+                            abilityType: 'epstein_buy',
+                            sq,
+                            pieceType: p.type,
+                            frontendCost,
+                            color
+                        });
+                    }
+                }
             }
         }
     }
@@ -219,7 +222,8 @@ function getAbilityMoves(fen, chars, abilities, color) {
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const p = boardState[r][c];
-                if (!p || p.type !== 'p' || p.color !== color) continue;
+                // Safe traversal applied
+                if (!p?.type || p.type !== 'p' || p?.color !== color) continue;
                 const fromSq = String.fromCharCode(97 + c) + (8 - r);
                 const fromCoord = sqToCoords(fromSq);
                 const targetR = fromCoord.r + (2 * dir);
@@ -230,7 +234,7 @@ function getAbilityMoves(fen, chars, abilities, color) {
                     const interSq = coordsToSq(fromCoord.c + dc / 2, fromCoord.r + dir);
                     if (!interSq || game.get(interSq)) return;
                     const target = game.get(targetSq);
-                    if (target && target.color === enemyColor && target.type !== 'k') {
+                    if (target?.color === enemyColor && target?.type && target.type !== 'k') {
                         moves.push({ abilityType: 'kirk_snipe', from: fromSq, to: targetSq, color });
                     }
                 });
@@ -253,11 +257,11 @@ function getAbilityMoves(fen, chars, abilities, color) {
                         const nc = c + dc;
                         if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
                             const p = boardState[nr][nc];
-                            if (p) {
+                            // Safe traversal applied
+                            if (p?.color === enemyColor && p?.type === 'k') {
+                                score += 5;
+                            } else if (p) {
                                 score += 1;
-                                if (p.color === enemyColor && p.type === 'k') {
-                                    score += 5;
-                                }
                             }
                         }
                     }
@@ -281,20 +285,21 @@ function applyAbilityMove(fen, move) {
     if (move.abilityType === 'bibi_ultimate') {
         move.toKill.forEach(sq => game.remove(sq));
     } else if (move.abilityType === 'epstein_buy') {
-    const targetPiece = game.get(move.sq);
+        const targetPiece = game.get(move.sq);
 
-    if (
-        !targetPiece ||
-        targetPiece.color === move.color ||
-        targetPiece.type === 'k' ||
-        targetPiece.type !== move.pieceType
-    ) {
-        return fen;
-    }
+        // Safe traversal applied
+        if (
+            !targetPiece?.type ||
+            targetPiece.color === move.color ||
+            targetPiece.type === 'k' ||
+            targetPiece.type !== move.pieceType
+        ) {
+            return fen;
+        }
 
-    game.remove(move.sq);
-    game.put({ type: move.pieceType, color: move.color }, move.sq);
-} else if (move.abilityType === 'kirk_snipe') {
+        game.remove(move.sq);
+        game.put({ type: move.pieceType, color: move.color }, move.sq);
+    } else if (move.abilityType === 'kirk_snipe') {
         return movePieceInFen(game.fen(), move.from, move.to, true);
     } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
         return fen;
@@ -331,9 +336,8 @@ function evaluate(game, chars, abilities) {
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const p = board[r][c];
-            if (!p) continue;
-            // Bulletproof reading the type here
-            if (p.type && p.type !== 'p' && p.type !== 'k') {
+            // Safe traversal applied
+            if (p?.type && p.type !== 'p' && p.type !== 'k') {
                 nonPawnMaterial += PIECE_VALUES[p.type] || 0;
             }
         }
@@ -345,8 +349,6 @@ function evaluate(game, chars, abilities) {
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const p = board[r][c];
-            if (!p) continue;
-            // Bulletproof check against random missing types deep in the search tree
             const typeStr = p?.type;
             if (!typeStr) continue;
 
@@ -375,11 +377,11 @@ function scoreMoveForOrdering(game, move) {
     let score = 0;
     if (move.promotion) score += 900;
 
-    // Bulletproof the move targeting so it doesn't crash on empty squares
     if (move.to && move.from) {
         const attacker = game.get(move.from);
         const victim = game.get(move.to);
-        if (attacker && attacker.type && victim && victim.type) {
+        // Safe traversal applied to prevent missing piece objects crashing
+        if (attacker?.type && victim?.type) {
             score += 10 * (PIECE_VALUES[victim.type] || 0) - (PIECE_VALUES[attacker.type] || 0);
         }
     }
@@ -614,13 +616,10 @@ function minimaxBestMove(fen, chars, abilities, color) {
                 displayScore = (currentBestScore / 100).toFixed(2);
                 if (currentBestScore > 0) displayScore = "+" + displayScore;
             }
-            let moveStr = bestMoveOverall.to ? bestMoveOverall.from + bestMoveOverall.to : bestMoveOverall.abilityType;
-
             lastCompletedDepth = depth;
             finalDisplayScore = displayScore;
         } catch (e) {
             if (e === 'timeout') {
-                //console.log(`[Minimax] Timeout hit! Stopped during depth ${depth}. Final chosen move from depth ${depth - 1}.`);
                 break;
             }
             throw e;
