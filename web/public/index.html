@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="/socket.io/socket.io.js"></script>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess but good</title>
+    <link rel="stylesheet" href="style.css?v=2">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="client.js" defer></script>
+</head>
+
+<body>
+    <div id="main-menu"
+        style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #3a3a3a 0%, #111111 100%); z-index: 300; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+
+        <div
+            style="background: rgba(255, 255, 255, 0.03); padding: 60px 50px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px);">
+            <h1
+                style="margin: 0 0 10px 0; font-size: 3.8rem; color: #f0c040; text-transform: uppercase; letter-spacing: 3px; text-shadow: 2px 5px 15px rgba(0,0,0,0.8);">
+                Chess if it was good</h1>
+            <p
+                style="margin-bottom: 40px; font-size: 1.1rem; color: #aaa; letter-spacing: 2px; text-transform: uppercase;">
+                Game for straight males</p>
+
+            <div style="display: flex; flex-direction: column; gap: 20px; width: min(350px, 100%); margin: 0 auto;">
+                <button id="btn-singleplayer" class="menu-btn"
+                    style="padding: 16px 20px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">SinglePlayer</button>
+                <button id="btn-multiplayer" class="menu-btn"
+                    style="padding: 16px 20px; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 15px rgba(0,0,0,0.4);">Multiplayer</button>
+            </div>
+        </div>
+    </div>
+    <div id="local-mode-menu"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: radial-gradient(circle at center, #3a3a3a 0%, #111111 100%); z-index: 300; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <div
+            style="background: rgba(255, 255, 255, 0.03); padding: 50px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px); width: min(400px, 90%);">
+
+            <div id="local-step-1">
+                <h2
+                    style="margin: 0 0 30px 0; font-size: 2rem; color: #f0c040; text-transform: uppercase; letter-spacing: 2px;">
+                    Game Mode</h2>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <button id="btn-2-players" class="menu-btn" style="padding: 14px; text-transform: uppercase;">2
+                        Players (Local)</button>
+                    <button id="btn-1-player" class="menu-btn" style="padding: 14px; text-transform: uppercase;">1
+                        Player (vs AI)</button>
+                    <button id="btn-0-players" class="menu-btn" style="padding: 14px; text-transform: uppercase;">0
+                        Players (AI vs AI)</button>
+                </div>
+            </div>
+
+            <div id="local-step-1p" style="display: none;">
+                <h2 style="margin: 0 0 20px 0; font-size: 1.8rem; color: #f0c040; text-transform: uppercase;">1 Player
+                    Setup</h2>
+
+                <div style="text-align: left; margin-bottom: 15px;">
+                    <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">Your Color:</label>
+                    <select id="1p-color" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
+                        <option value="w">White</option>
+                        <option value="b">Black</option>
+                    </select>
+                </div>
+
+                <div style="text-align: left; margin-bottom: 25px;">
+                    <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">Opponent AI:</label>
+                    <select id="1p-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
+                        <option value="random">Random AI</option>
+                        <option value="minimax">Minimax AI</option>
+                    </select>
+                </div>
+
+                <button id="btn-confirm-1p" class="menu-btn"
+                    style="padding: 14px; text-transform: uppercase;">Continue</button>
+            </div>
+
+            <div id="local-step-0p" style="display: none;">
+                <h2 style="margin: 0 0 20px 0; font-size: 1.8rem; color: #f0c040; text-transform: uppercase;">AI vs AI
+                    Setup</h2>
+
+                <div style="text-align: left; margin-bottom: 15px;">
+                    <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">White AI:</label>
+                    <select id="0p-w-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
+                        <option value="random">Random AI</option>
+                        <option value="minimax">Minimax AI</option>
+                    </select>
+                </div>
+
+                <div style="text-align: left; margin-bottom: 25px;">
+                    <label style="color: #aaa; font-size: 0.9rem; text-transform: uppercase;">Black AI:</label>
+                    <select id="0p-b-ai" class="ai-type-select" style="width: 100%; margin-top: 5px; padding: 10px;">
+                        <option value="random">Random AI</option>
+                        <option value="minimax">Minimax AI</option>
+                    </select>
+                </div>
+
+                <button id="btn-confirm-0p" class="menu-btn"
+                    style="padding: 14px; text-transform: uppercase;">Continue</button>
+            </div>
+
+            <button id="btn-back-local"
+                style="margin-top: 20px; background: none; border: none; color: #888; cursor: pointer; text-decoration: underline;">Back</button>
+
+        </div>
+    </div>
+    <div id="multiplayer-menu"
+        style="display: none; background: #333; padding: 15px; margin-bottom: 15px; text-align: center; border-radius: 8px; width: min(640px, 96vw);">
+        <button id="create-room-btn" class="menu-btn" style="width: auto; margin-right: 10px;">Create Room</button>
+
+        <span style="margin: 0 10px; font-weight: bold;">OR</span>
+
+        <input type="text" id="room-code-input" placeholder="Enter Code"
+            style="padding: 10px; border-radius: 5px; border: none; width: 100px;">
+        <button id="join-room-btn" class="menu-btn" style="width: auto; margin-left: 10px;">Join Room</button>
+
+        <div id="room-display" style="margin-top: 15px; font-size: 1.2rem; font-weight: bold; color: #f0c040;"></div>
+    </div>
+    <div id="game-container">
+        <div class="player-info top-player">
+            <div class="player-details">
+                <div class="avatar" id="top-avatar"></div>
+                <div class="player-name" id="top-char-name">Black Player</div>
+                <span class="ai-thinking-label" id="top-thinking" style="display:none">🤔 Thinking...</span>
+                <span class="ai-stats-label" id="top-ai-stats"></span>
+            </div>
+            <div class="ability-container hidden" id="top-ability-container">
+                <button class="ability-btn" id="top-ability-btn">Ability</button>
+                <div class="ability-status" id="top-ability-status"></div>
+            </div>
+            <div class="capture-bar top-captures" id="top-captures"></div>
+        </div>
+
+        <div id="board"></div>
+
+        <div class="player-info bottom-player">
+            <div class="player-details">
+                <div class="avatar" id="bottom-avatar"></div>
+                <div class="player-name" id="bottom-char-name">White Player</div>
+                <span class="ai-thinking-label" id="bottom-thinking" style="display:none">🤔 Thinking...</span>
+                <span class="ai-stats-label" id="bottom-ai-stats"></span>
+            </div>
+            <div class="ability-container hidden" id="bottom-ability-container">
+                <button class="ability-btn" id="bottom-ability-btn">Ability</button>
+                <div class="ability-status" id="bottom-ability-status"></div>
+            </div>
+            <div class="capture-bar bottom-captures" id="bottom-captures"></div>
+        </div>
+    </div>
+
+    <div id="game-over-modal" class="hidden">
+        <div class="modal-content">
+            <h2 id="game-over-message">Checkmate! White wins.</h2>
+            <button id="restart-btn" class="menu-btn">Play Again</button>
+        </div>
+    </div>
+
+    <!-- <div id="char-select-modal"> -->
+    <div id="char-select-modal" style="display: none;">
+        <div class="modal-content large-modal">
+            <h2>Select Your Characters</h2>
+
+            <div class="select-row">
+                <div class="select-col">
+                    <h3>White Player</h3>
+                    <div class="player-type-row">
+                        <label>Play as:</label>
+                        <select id="white-ai-type" class="ai-type-select">
+                            <option value="human">Human</option>
+                            <option value="random">Random AI</option>
+                            <option value="minimax">Minimax AI</option>
+                        </select>
+                    </div>
+                    <div class="char-options" id="white-char-options">
+                        <div class="char-card selected" data-char="none">
+                            <div class="char-card-header">
+                                <img src="assets/players/virgin_human.png" class="char-icon" alt="Standard">
+                                <h4>Standard</h4>
+                            </div>
+                            <p>No special abilities.</p>
+                        </div>
+                        <div class="char-card" data-char="epstein">
+                            <div class="char-card-header">
+                                <img src="assets/players/epstien.jpg" class="char-icon" alt="Epstein">
+                                <h4>Epstein</h4>
+                            </div>
+                            <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
+                                buy an enemy piece.</p>
+                        </div>
+                        <div class="char-card" data-char="bibi">
+                            <div class="char-card-header">
+                                <img src="assets/players/bibi.png" class="char-icon" alt="Big Yahu">
+                                <h4>Big Yahu</h4>
+                            </div>
+                            <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 10
+                                moves to charge.</p>
+                        </div>
+                        <div class="char-card" data-char="diddy">
+                            <div class="char-card-header">
+                                <img src="assets/players/diddy.jpg" class="char-icon" alt="Diddy">
+                                <h4>Diddy</h4>
+                            </div>
+                            <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
+                                more square. Cooldown: 10 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="kirk">
+                            <div class="char-card-header">
+                                <img src="assets/players/kirk.jfif" class="char-icon" alt="Charlie Kirk">
+                                <h4>Charlie Kirk</h4>
+                            </div>
+                            <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
+                                cooldown 5 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="noam">
+                            <div class="char-card-header">
+                                <img src="assets/players/noam.jfif" class="char-icon" alt="Noam">
+                                <h4>Noam</h4>
+                            </div>
+                            <p>No special chess abilities. But after every
+                                move, Noam proudly announces who he is.</p>
+                        </div>
+                        <div class="char-card" data-char="shlomo">
+                            <div class="char-card-header">
+                                <img src="assets/players/shlomo.jfif" class="char-icon" alt="Shlomo">
+                                <h4>Shlomo</h4>
+                            </div>
+                            <p><strong>Ability: Being very very Handsome</strong><br>He died for our sins and came back
+                                to help and guide us at tikshove merkaz hovala</p>
+                        </div>
+                        <div class="char-card" data-char="dvir">
+                            <div class="char-card-header">
+                                <img src="assets/players/dvir.jfif" class="char-icon" alt="Dvir">
+                                <h4>Dvir</h4>
+                            </div>
+                            <p><strong>Ability: He is Einstein</strong><br>Overwrites player settings and plays
+                                as Stockfish 10 at maximum difficulty.</p>
+                        </div>
+                        <div class="char-card" data-char="aheud">
+                            <div class="char-card-header">
+                                <img src="assets/players/barak.png" class="char-icon" alt="Aheud">
+                                <h4>Aheud Barak</h4>
+                            </div>
+                            <p><strong>Ability: Smoke Bomb</strong><br>Obscures a 3x3 area for 3 moves. Players can
+                                still interact with the hidden pieces. Cooldown: 5 moves.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="select-col">
+                    <h3>Black Player</h3>
+                    <div class="player-type-row">
+                        <label>Play as:</label>
+                        <select id="black-ai-type" class="ai-type-select">
+                            <option value="human">Human</option>
+                            <option value="random">Random AI</option>
+                            <option value="minimax">Minimax AI</option>
+                        </select>
+                    </div>
+                    <div class="char-options" id="black-char-options">
+                        <div class="char-card selected" data-char="none">
+                            <div class="char-card-header">
+                                <img src="assets/players/virgin_human.png" class="char-icon" alt="Standard">
+                                <h4>Standard</h4>
+                            </div>
+                            <p>No special abilities.</p>
+                        </div>
+                        <div class="char-card" data-char="epstein">
+                            <div class="char-card-header">
+                                <img src="assets/players/epstien.jpg" class="char-icon" alt="Epstein">
+                                <h4>Epstein</h4>
+                            </div>
+                            <p><strong>Ability: Jewish Magic</strong><br>Spend 3x the piece value in captured points to
+                                buy an enemy piece.</p>
+                        </div>
+                        <div class="char-card" data-char="bibi">
+                            <div class="char-card-header">
+                                <img src="assets/players/bibi.png" class="char-icon" alt="Big Yahu">
+                                <h4>Big Yahu</h4>
+                            </div>
+                            <p><strong>Ability: Air Strike</strong><br>Kills all unarmed (unprotected) pieces, takes 20
+                                moves to charge.</p>
+                        </div>
+                        <div class="char-card" data-char="diddy">
+                            <div class="char-card-header">
+                                <img src="assets/players/diddy.jpg" class="char-icon" alt="Diddy">
+                                <h4>Diddy</h4>
+                            </div>
+                            <p><strong>Ability: Baby Oil</strong><br>Pours baby oil on enemy pieces making them slide 1
+                                more square. Cooldown: 10 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="kirk">
+                            <div class="char-card-header">
+                                <img src="assets/players/kirk.jfif" class="char-icon" alt="Charlie Kirk">
+                                <h4>Charlie Kirk</h4>
+                            </div>
+                            <p><strong>Ability: Sucking to Jews and Uni Sniper</strong><br>Pawns get longer range,
+                                cooldown 5 moves.</p>
+                        </div>
+                        <div class="char-card" data-char="noam">
+                            <div class="char-card-header">
+                                <img src="assets/players/noam.jfif" class="char-icon" alt="Noam">
+                                <h4>Noam</h4>
+                            </div>
+                            <p>No special chess abilities. But after every
+                                move, Noam proudly announces who he is.</p>
+                        </div>
+                        <div class="char-card" data-char="shlomo">
+                            <div class="char-card-header">
+                                <img src="assets/players/shlomo.jfif" class="char-icon" alt="Shlomo">
+                                <h4>Shlomo</h4>
+                            </div>
+                            <p><strong>Ability: Being very very Handsome</strong><br>He died for our sins and came back
+                                to help and guide us at tikshove merkaz hovala</p>
+                        </div>
+                        <div class="char-card" data-char="dvir">
+                            <div class="char-card-header">
+                                <img src="assets/players/dvir.jfif" class="char-icon" alt="Dvir">
+                                <h4>Dvir</h4>
+                            </div>
+                            <p><strong>Ability: He is Einstein</strong><br>Overwrites player settings and plays
+                                as Stockfish 10 at maximum difficulty.</p>
+                        </div>
+                        <div class="char-card" data-char="aheud">
+                            <div class="char-card-header">
+                                <img src="assets/players/barak.png" class="char-icon" alt="Aheud">
+                                <h4>Aheud Barak</h4>
+                            </div>
+                            <p><strong>Ability: Smoke Bomb</strong><br>Obscures a 3x3 area for 3 moves. Players can
+                                still interact with the hidden pieces. Cooldown: 5 moves.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="start-game-btn" class="menu-btn">Start Game</button>
+        </div>
+    </div>
+</body>
+
+</html>
