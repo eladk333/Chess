@@ -759,7 +759,7 @@ function postMoveLogic(colorWhoMoved) {
 
         victimLabel.style.color = 'red';
         victimLabel.style.fontSize = '1.5em';
-        victimLabel.textContent = 'היועמשית!!!';
+        victimLabel.textContent = '!!!היועמשית';
         victimLabel.style.display = 'inline';
 
         setTimeout(() => {
