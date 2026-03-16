@@ -751,6 +751,25 @@ function postMoveLogic(colorWhoMoved) {
         }, 2000);
     }
 
+    // Trigger the Bibi loss quote
+    const victimColor = colorWhoMoved === 'w' ? 'b' : 'w';
+    if (chars[victimColor] === 'bibi' && isCapture) {
+        const victimSide = victimColor === 'w' ? 'bottom' : 'top';
+        const victimLabel = document.getElementById(`${victimSide}-thinking`);
+
+        victimLabel.style.color = 'red';
+        victimLabel.style.fontSize = '1.5em';
+        victimLabel.textContent = 'היועמשית!!!';
+        victimLabel.style.display = 'inline';
+
+        setTimeout(() => {
+            victimLabel.style.display = 'none';
+            victimLabel.textContent = '🤔 Thinking...';
+            victimLabel.style.color = '';
+            victimLabel.style.fontSize = '';
+        }, 2000);
+    }
+
     if (chars[colorWhoMoved] === 'bibi') {
         abilities[colorWhoMoved].movesSinceLastUltimate++;
     }
