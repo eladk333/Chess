@@ -158,6 +158,11 @@ document.getElementById('game-container').style.display = 'flex';
         document.querySelector('.select-col:first-child').style.display = 'none'; // Hide White
     }
 
+    // Hide the AI selection dropdown for multiplayer
+    document.querySelectorAll('.player-type-row').forEach(row => {
+        row.style.display = 'none';
+    });
+
     // Change the button text to Ready
     document.getElementById('start-game-btn').textContent = 'Ready';
 
