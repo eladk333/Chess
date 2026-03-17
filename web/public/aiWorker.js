@@ -107,7 +107,7 @@ function isBlockedByWall(gameFen, fromSq, toSq, allWalls) {
 }
 function getStandardMovesFiltered(game, fen, abilities) {
     const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
-    return game.moves({ verbose: true }).filter(m => !isBlockedByWall(fen, m.from, m.to, allWalls));
+    return safeGetMoves(game).filter(m => !isBlockedByWall(fen, m.from, m.to, allWalls));
 }
 function sqToCoords(sq) {
     if (!sq) return { c: 0, r: 0 };
@@ -116,6 +116,11 @@ function sqToCoords(sq) {
 function coordsToSq(c, r) {
     if (c < 0 || c > 7 || r < 1 || r > 8) return null;
     return String.fromCharCode(97 + c) + r;
+}
+// Wraps standard chess.js move generation so it doesn't crash if a King is capturable
+function safeGetMoves(game) {
+    try { return game.moves({ verbose: true }); } 
+    catch (e) { return []; }
 }
 function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     if (!fromSq || !toSq) return fen;
@@ -318,9 +323,34 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
+    // AI Logic for George capturing the King directly
+    if (char === 'george') {
+        const enemyColor = color === 'w' ? 'b' : 'w';
+        const boardState = game.board();
+        let enemyKingSq = null;
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (boardState[r][c]?.type === 'k' && boardState[r][c]?.color === enemyColor) {
+                    enemyKingSq = String.fromCharCode(97 + c) + (8 - r);
+                }
+            }
+        }
+        if (enemyKingSq) {
+            game.remove(enemyKingSq);
+            game.put({ type: 'q', color: enemyColor }, enemyKingSq);
+            const pseudoMoves = safeGetMoves(game);
+            const attacksOnKing = pseudoMoves.filter(m => m.to === enemyKingSq);
+            game.remove(enemyKingSq);
+            game.put({ type: 'k', color: enemyColor }, enemyKingSq);
+
+            attacksOnKing.forEach(m => {
+                moves.push({ abilityType: 'george_magic_win', from: m.from, to: m.to, color });
+            });
+        }
+    }
+
     return moves;
 }
-
 function applyAbilityMove(fen, move) {
     const game = new Chess(fen);
     if (move.abilityType === 'bibi_ultimate') {
@@ -344,6 +374,8 @@ function applyAbilityMove(fen, move) {
         return movePieceInFen(game.fen(), move.from, move.to, true);
     } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
         return fen;
+    } else if (move.abilityType === 'george_magic_win') {
+        return movePieceInFen(game.fen(), move.from, move.to, false);
     } else if (move.abilityType === 'trump_wall') {
         const tokens = game.fen().split(' ');
         tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
@@ -358,6 +390,20 @@ function applyAbilityMove(fen, move) {
 }
 
 function evaluate(game, chars, abilities) {
+    // Check if a King was magically eaten
+    let boardState = game.board();
+    let whiteKing = false, blackKing = false;
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            if (boardState[r][c]?.type === 'k') {
+                if (boardState[r][c].color === 'w') whiteKing = true;
+                if (boardState[r][c].color === 'b') blackKing = true;
+            }
+        }
+    }
+    if (!whiteKing) return -1000000;
+    if (!blackKing) return 1000000;
+
     if (game.in_checkmate()) return game.turn() === 'w' ? -100000 : 100000;
     if (game.game_over()) return 0;
     
@@ -419,6 +465,7 @@ function evaluate(game, chars, abilities) {
 
 function scoreMoveForOrdering(game, move) {
     if (move.abilityType) {
+        if (move.abilityType === 'george_magic_win') return 2000000;
         if (move.abilityType === 'bibi_ultimate') return 1000000;
         if (move.abilityType === 'epstein_buy') return 500000 + (move.frontendCost * 100);
         if (move.abilityType === 'kirk_snipe') return 300000;
@@ -559,7 +606,7 @@ function quiescenceSearch(fen, alpha, beta, isMaximizing, chars, abilities) {
         if (beta > standPat) beta = standPat;
     }
 
-    const stdMoves = game.moves({ verbose: true });
+    const stdMoves = safeGetMoves(game)
     const captures = stdMoves.filter(m => m.flags.includes('c') || m.flags.includes('e'));
     captures.sort((a, b) => scoreMoveForOrdering(game, b) - scoreMoveForOrdering(game, a));
 
@@ -606,7 +653,7 @@ function minimaxSearch(fen, depth, alpha, beta, isMaximizing, chars, abilities) 
     const originalBeta = beta;
     const color = game.turn();
 
-    const stdMoves = game.moves({ verbose: true });
+    const stdMoves = safeGetMoves(game);
     const abilityMoves = getAbilityMoves(fen, chars, abilities, color);
     const allMoves = [...stdMoves, ...abilityMoves];
 
@@ -655,7 +702,7 @@ function minimaxBestMove(fen, chars, abilities, color) {
     tt = {};
 
     const game = new Chess(fen);
-    const stdMoves = game.moves({ verbose: true });
+    const stdMoves = safeGetMoves(game);
     const abilityMoves = getAbilityMoves(fen, chars, abilities, color);
     const allMoves = [...stdMoves, ...abilityMoves];
 
@@ -713,7 +760,7 @@ function minimaxBestMove(fen, chars, abilities, color) {
 
 function randomMove(fen, chars, abilities, color) {
     const game = new Chess(fen);
-    const all = [...game.moves({ verbose: true }), ...getAbilityMoves(fen, chars, abilities, color)];
+    const all = [...safeGetMoves(game), ...getAbilityMoves(fen, chars, abilities, color)];
     if (all.length === 0) return null;
     const choice = all[Math.floor(Math.random() * all.length)];
     return { isAbility: !!choice.abilityType, move: choice, depth: 1, evalScore: "Random" };

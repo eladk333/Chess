@@ -392,7 +392,7 @@ function formatCharName(charId) {
     if (charId === 'dvir') return 'Dvir';
     if (charId === 'aheud') return 'Aheud Barak';
     if (charId === 'trump') return 'Donald Trump';
-    if (charId === 'george') return 'George';
+    if (charId === 'george') return 'George Floyd';
     return '';
 }
 
@@ -898,6 +898,27 @@ function attemptMove(from, to) {
     const movingColor = game.turn();
     const enemyColor = movingColor === 'w' ? 'b' : 'w';
     const piece = game.get(from);
+    const targetPiece = game.get(to);
+
+    // --- GEORGE KING CAPTURE OVERRIDE ---
+    if (chars[movingColor] === 'george' && targetPiece && targetPiece.type === 'k' && targetPiece.color === enemyColor) {
+        game.remove(to);
+        game.put({ type: 'q', color: enemyColor }, to); // Temp replace with Queen to validate attack
+        const pseudoMoves = game.moves({ verbose: true });
+        const validAttack = pseudoMoves.find(m => m.from === from && m.to === to);
+        game.remove(to);
+        game.put({ type: 'k', color: enemyColor }, to); // Restore King
+
+        if (validAttack) {
+            let newFen = movePieceInFen(game.fen(), from, to, false);
+            game.load(newFen);
+            updateBoard();
+            if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+            
+            checkGameOver(); // Triggers your custom win screen!
+            return true;
+        }
+    }
 
     // --- CUSTOM ABILITIES (Kirk Sniper) ---
     if (chars[movingColor] === 'kirk' && abilities[movingColor].uniSniperActive && piece && piece.type === 'p') {
@@ -1689,7 +1710,7 @@ function executeAbilityMove(color, move) {
         playSound('smoke');
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 300);
-    } else if (move.abilityType === 'trump_wall') {
+   } else if (move.abilityType === 'trump_wall') {
         abilities[color].walls = [move.sq];
         abilities[color].movesSinceWall = 0;
         switchTurn();
@@ -1698,6 +1719,12 @@ function executeAbilityMove(color, move) {
         syncCustomState();
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);
+    } else if (move.abilityType === 'george_magic_win') {
+        let newFen = movePieceInFen(game.fen(), move.from, move.to, false);
+        game.load(newFen);
+        updateBoard();
+        if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+        checkGameOver();
     }
 }
 
