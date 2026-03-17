@@ -131,9 +131,13 @@
         </div>
 
         <div id="room-display" class="multiplayer-status"></div>
+        <button id="btn-back-multiplayer" style="margin-top: 20px; background: none; border: none; color: #888; cursor: pointer; text-decoration: underline; font-family: inherit; font-size: 1rem;">Back to Main Menu</button>
     </div>
 </div>
-    <div id="game-container" style="display: none;">
+
+    <div id="game-container" style="display: none; position: relative;">
+        <button id="btn-options" class="menu-btn" style="position: absolute; top: 0; right: -100px; width: auto; padding: 10px 15px; background-color: #444; border: 1px solid #555; font-size: 1rem; z-index: 100;">Options</button>
+        
         <div class="player-info top-player">
             <div class="player-details">
                 <div class="avatar" id="top-avatar"></div>
@@ -169,6 +173,15 @@
         <div class="modal-content">
             <h2 id="game-over-message">Checkmate! White wins.</h2>
             <button id="restart-btn" class="menu-btn">Play Again</button>
+        </div>
+    </div>
+
+   <div id="options-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.8); display: none; justify-content: center; align-items: center; z-index: 400;">    <div class="modal-content">
+            <h2 style="margin-bottom: 20px;">Game Options</h2>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <button id="btn-resume" class="menu-btn">Resume</button>
+                <button id="btn-quit" class="menu-btn" style="background-color: #c9302c;">Quit Game</button>
+            </div>
         </div>
     </div>
 

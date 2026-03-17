@@ -10,7 +10,18 @@ const boardEl = document.getElementById('board');
 function getSide(color) {
     return isBoardFlipped ? (color === 'b' ? 'bottom' : 'top') : (color === 'w' ? 'bottom' : 'top');
 }
+// --- OPTIONS MENU WIRING ---
+document.getElementById('btn-options').addEventListener('click', () => {
+    document.getElementById('options-modal').style.display = 'flex';
+});
 
+document.getElementById('btn-resume').addEventListener('click', () => {
+    document.getElementById('options-modal').style.display = 'none';
+});
+
+document.getElementById('btn-quit').addEventListener('click', () => {
+    location.reload(); 
+});
 // --- MAIN MENU & LOCAL WIZARD WIRING ---
 document.getElementById('btn-singleplayer').addEventListener('click', () => {
     gameMode = 'single';
@@ -106,7 +117,11 @@ function syncCustomState() {
         });
     }
 }
-
+// Back button for Multiplayer Menu
+document.getElementById('btn-back-multiplayer').addEventListener('click', () => {
+    document.getElementById('multiplayer-menu').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+});
 // --- Multiplayer UI Wiring ---
 document.getElementById('create-room-btn').addEventListener('click', () => {
     socket.emit('create_room');
@@ -180,6 +195,12 @@ socket.on('both_ready', (serverChars) => {
 });
 socket.on('opponent_ready', () => {
     document.getElementById('room-display').textContent = 'Opponent is ready! Waiting for you...';
+});
+
+// If the server tells us the opponent left, alert the player and auto-quit
+socket.on('opponent_quit', () => {
+    alert("Your opponent has disconnected from the game.");
+    document.getElementById('btn-quit').click(); // Re-use your existing quit logic!
 });
 
 function startGameFlow(selectedChars) {

@@ -100,6 +100,19 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log('User disconnected:', socket.id);
+        
+        // Check if the user was in an active game
+        for (const roomId in games) {
+            const game = games[roomId];
+            if (game.players.w === socket.id || game.players.b === socket.id) {
+                // Tell the other player they left
+                socket.to(roomId).emit('opponent_quit');
+                // Delete the room so it doesn't stay in memory forever
+                delete games[roomId];
+                console.log(`Room ${roomId} closed because a player disconnected.`);
+                break;
+            }
+        }
     });
 });
 
