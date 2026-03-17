@@ -83,6 +83,32 @@ const KING_EG_PST = [
 const PST_MAP = { p: PAWN_PST, n: KNIGHT_PST, b: BISHOP_PST, r: ROOK_PST, q: QUEEN_PST };
 
 // ---- FEN Helpers ----
+function isBlockedByWall(gameFen, fromSq, toSq, allWalls) {
+    if (!allWalls || allWalls.length === 0) return false;
+    if (allWalls.includes(toSq)) return true;
+    const from = sqToCoords(fromSq);
+    const to = sqToCoords(toSq);
+    if (!from || !to) return false;
+    const tempGame = new Chess(gameFen);
+    const piece = tempGame.get(fromSq);
+    if (!piece || piece.type === 'n') return false;
+    const dc = to.c === from.c ? 0 : Math.sign(to.c - from.c);
+    const dr = to.r === from.r ? 0 : Math.sign(to.r - from.r);
+    let currC = from.c + dc;
+    let currR = from.r + dr;
+    let steps = 0;
+    while ((currC !== to.c || currR !== to.r) && steps < 10) {
+        if (allWalls.includes(coordsToSq(currC, currR))) return true;
+        currC += dc;
+        currR += dr;
+        steps++;
+    }
+    return false;
+}
+function getStandardMovesFiltered(game, fen, abilities) {
+    const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
+    return game.moves({ verbose: true }).filter(m => !isBlockedByWall(fen, m.from, m.to, allWalls));
+}
 function sqToCoords(sq) {
     if (!sq) return { c: 0, r: 0 };
     return { c: sq.charCodeAt(0) - 97, r: parseInt(sq[1]) };
@@ -277,6 +303,21 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
+    if (char === 'trump' && ab.movesSinceWall >= 3) {
+        const boardState = game.board();
+        const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (!boardState[r][c]) {
+                    const sq = String.fromCharCode(97 + c) + (8 - r);
+                    if (!allWalls.includes(sq)) {
+                        moves.push({ abilityType: 'trump_wall', sq, color });
+                    }
+                }
+            }
+        }
+    }
+
     return moves;
 }
 
@@ -303,6 +344,11 @@ function applyAbilityMove(fen, move) {
         return movePieceInFen(game.fen(), move.from, move.to, true);
     } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
         return fen;
+    } else if (move.abilityType === 'trump_wall') {
+        const tokens = game.fen().split(' ');
+        tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
+        tokens[3] = '-';
+        return tokens.join(' ');
     }
 
     const tokens = game.fen().split(' ');
@@ -372,6 +418,7 @@ function scoreMoveForOrdering(game, move) {
         if (move.abilityType === 'epstein_buy') return 500000 + (move.frontendCost * 100);
         if (move.abilityType === 'kirk_snipe') return 300000;
         if (move.abilityType === 'aheud_smoke') return 250000;
+        if (move.abilityType === 'trump_wall') return 220000;
         if (move.abilityType === 'diddy_baby_oil') return 200000;
     }
     let score = 0;
@@ -404,6 +451,9 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
             childAbilities[color].smokeRemainingMoves = 4;
             childAbilities[color].movesSinceSmoke = 0;
             childAbilities[color].smokeCenterSq = move.sq;
+        } else if (move.abilityType === 'trump_wall') {
+            childAbilities[color].walls = [move.sq];
+            childAbilities[color].movesSinceWall = 0;
         }
     } else {
         let slipSquare = null;
@@ -441,6 +491,7 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
         if (chars[color] === 'bibi') childAbilities[color].movesSinceLastUltimate++;
         if (chars[color] === 'diddy' && !childAbilities[color].babyOilActive) childAbilities[color].movesSinceBabyOil++;
         if (chars[color] === 'kirk' && !childAbilities[color].uniSniperActive) childAbilities[color].movesSinceUniSniper++;
+        if (chars[color] === 'trump') childAbilities[color].movesSinceWall++;
         if (chars[color] === 'aheud') {
             if (childAbilities[color].smokeActive) {
                 childAbilities[color].smokeRemainingMoves--;
