@@ -273,8 +273,7 @@ const CAPTURE_ORDER = ['p', 'n', 'b', 'r', 'q'];
 
 let selectedSquare = null;
 let preventClick = false;
-let touchDraggingPiece = null;
-let touchDragFromSquare = null;
+
 
 const playerTypes = { w: 'human', b: 'human' };
 let aiWorker = null;
@@ -571,9 +570,7 @@ function updateBoard(animateSlipForSquare = null) {
                 pieceEl.draggable = true;
 pieceEl.addEventListener('dragstart', handleDragStart);
 pieceEl.addEventListener('dragend', handleDragEnd);
-pieceEl.addEventListener('touchstart', handleTouchStart, { passive: false });
-pieceEl.addEventListener('touchmove', handleTouchMove, { passive: false });
-pieceEl.addEventListener('touchend', handleTouchEnd, { passive: false });
+
 
                 document.getElementById(sqId).appendChild(pieceEl);
             }
@@ -738,64 +735,7 @@ function handleDrop(e) {
     selectedSquare = null;
     clearValidMoves();
 }
-function handleTouchStart(e) {
-    if (game.game_over()) return;
 
-    const turnColor = game.turn();
-    const pieceColor = e.target.dataset.color;
-
-    if (
-        pieceColor !== turnColor ||
-        abilities[turnColor].huntingMode ||
-        playerTypes[turnColor] !== 'human' ||
-        aiThinking ||
-        (gameMode === 'multi' && turnColor !== myColor)
-    ) {
-        return;
-    }
-
-    e.preventDefault();
-
-    touchDraggingPiece = e.target;
-    touchDragFromSquare = e.target.dataset.square;
-    selectedSquare = touchDragFromSquare;
-
-    clearValidMoves();
-    const fromSquareEl = document.getElementById(selectedSquare);
-    if (fromSquareEl) {
-        fromSquareEl.classList.add('selected');
-    }
-    showValidMoves(selectedSquare);
-
-    touchDraggingPiece.classList.add('dragging');
-}
-
-function handleTouchMove(e) {
-    if (!touchDraggingPiece) return;
-    e.preventDefault();
-}
-
-function handleTouchEnd(e) {
-    if (!touchDraggingPiece || !touchDragFromSquare) return;
-
-    e.preventDefault();
-
-    const touch = e.changedTouches[0];
-    const dropTarget = document.elementFromPoint(touch.clientX, touch.clientY);
-    const squareEl = dropTarget ? dropTarget.closest('.square') : null;
-
-    touchDraggingPiece.classList.remove('dragging');
-
-    if (squareEl) {
-        const targetSquare = squareEl.dataset.square;
-        attemptMove(touchDragFromSquare, targetSquare);
-    }
-
-    touchDraggingPiece = null;
-    touchDragFromSquare = null;
-    selectedSquare = null;
-    clearValidMoves();
-}
 function handleSquareClick(sqId) {
     if (preventClick || game.game_over()) return;
     const turnColor = game.turn();
