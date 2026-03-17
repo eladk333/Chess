@@ -360,6 +360,11 @@ function applyAbilityMove(fen, move) {
 function evaluate(game, chars, abilities) {
     if (game.in_checkmate()) return game.turn() === 'w' ? -100000 : 100000;
     if (game.game_over()) return 0;
+    
+    // George White Penalty
+    if (chars && chars.w === 'george' && abilities && abilities.w && abilities.w.georgeConsecutiveChecks >= 3) {
+        return -100000;
+    }
 
     let score = 0;
     let nonPawnMaterial = 0;
@@ -500,6 +505,31 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
                 childAbilities[color].movesSinceSmoke++;
             }
         }
+    }
+
+    // AI logic for Black George Double Move
+    if (chars[color] === 'george' && color === 'b') {
+        if (!childAbilities[color].georgeSecondMovePending) {
+            childAbilities[color].georgeSecondMovePending = true;
+            let tokens = childFen.split(' ');
+            tokens[1] = 'b';
+            childFen = tokens.join(' ');
+        } else {
+            childAbilities[color].georgeSecondMovePending = false;
+        }
+    }
+
+    // AI logic for White George getting checked
+    let nextTurn = childFen.split(' ')[1];
+    if (chars[nextTurn] === 'george' && nextTurn === 'w') {
+        try {
+            let tempGame = new Chess(childFen);
+            if (tempGame.in_check()) {
+                childAbilities.w.georgeConsecutiveChecks = (childAbilities.w.georgeConsecutiveChecks || 0) + 1;
+            } else {
+                childAbilities.w.georgeConsecutiveChecks = 0;
+            }
+        } catch(e) {}
     }
 
     return { childFen, childAbilities };

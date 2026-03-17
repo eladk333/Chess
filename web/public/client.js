@@ -222,8 +222,9 @@ function startGameFlow(selectedChars) {
         playerTypes.b = 'human';
     }
 
-    abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [] };
-    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [] }; aiThinking = false;
+    abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
+    
+    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
     document.body.classList.remove('hunting-mode');
 
     // Flip the board if playing solely as black
@@ -318,7 +319,7 @@ const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
 const avatarMap = {
-    'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif'
+   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif'
 };
 
 function initGame() {
@@ -375,6 +376,7 @@ function formatCharName(charId) {
     if (charId === 'dvir') return 'Dvir';
     if (charId === 'aheud') return 'Aheud Barak';
     if (charId === 'trump') return 'Donald Trump';
+    if (charId === 'george') return 'George';
     return '';
 }
 
@@ -416,6 +418,10 @@ function setupAbilityUI(color, side) {
         btn.classList.add('ready');
         status.textContent = 'Ready!';
         btn.disabled = false;
+    } else if (chars[color] === 'george') {
+        btn.textContent = 'Passive';
+        if (color === 'b') status.textContent = 'Double Move';
+        if (color === 'w') status.textContent = 'Fragile Ego';
     }
 }
 
@@ -715,6 +721,13 @@ function updateAbilityDisplay() {
                 status.textContent = `Cooldown: ${3 - charge}`;
                 btn.disabled = true;
                 btn.classList.remove('ready');
+            }
+        } else if (char === 'george') {
+            if (color === 'b') {
+                status.textContent = abilities[color].georgeSecondMovePending ? '2nd Move!' : 'Double Move';
+                btn.classList.toggle('active', abilities[color].georgeSecondMovePending);
+            } else {
+                status.textContent = `Checks: ${abilities[color].georgeConsecutiveChecks || 0}/3`;
             }
         }
     });
@@ -1141,6 +1154,40 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
         }, 400);
     }
 
+    // --- GEORGE ABILITY LOGIC ---
+    const currentTurn = game.turn(); 
+    if (chars.w === 'george' && currentTurn === 'w') {
+        if (game.in_check()) {
+            abilities.w.georgeConsecutiveChecks++;
+            if (abilities.w.georgeConsecutiveChecks >= 3) {
+                const side = getSide('w');
+                const label = document.getElementById(`${side}-thinking`);
+                label.style.color = 'red';
+                label.style.fontSize = '1.5em';
+                label.textContent = 'You beat me!';
+                label.style.display = 'inline';
+                
+                setTimeout(() => {
+                    const modal = document.getElementById('game-over-modal');
+                    const msg = document.getElementById('game-over-message');
+                    msg.textContent = `I can't breath!`;
+                    modal.classList.remove('hidden');
+                }, 2000);
+            }
+        } else {
+            abilities.w.georgeConsecutiveChecks = 0;
+        }
+    }
+
+    if (chars.b === 'george' && colorWhoMoved === 'b') {
+        if (!abilities.b.georgeSecondMovePending) {
+            abilities.b.georgeSecondMovePending = true;
+            switchTurn();
+        } else {
+            abilities.b.georgeSecondMovePending = false;
+        }
+    }
+
     if (!skipSync) {
         syncCustomState();
     }
@@ -1396,10 +1443,45 @@ function renderCaptures(container, capturedDict, imgColorStr, plusScore) {
 }
 
 function checkGameOver() {
-    if (game.game_over()) {
-        const modal = document.getElementById('game-over-modal');
-        const msg = document.getElementById('game-over-message');
+    const modal = document.getElementById('game-over-modal');
+    const msg = document.getElementById('game-over-message');
 
+    // --- CUSTOM KING CAPTURE CHECK ---
+    let whiteKing = false;
+    let blackKing = false;
+    const boardState = game.board();
+    
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const p = boardState[r][c];
+            if (p && p.type === 'k') {
+                if (p.color === 'w') whiteKing = true;
+                if (p.color === 'b') blackKing = true;
+            }
+        }
+    }
+
+    // If a King is missing, end the game immediately
+    if (!whiteKing || !blackKing) {
+        const winnerColor = !whiteKing ? 'b' : 'w';
+        
+        if (chars[winnerColor] === 'george') {
+            msg.innerHTML = `
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+                    <div style="color: #f0c040; font-size: 3rem; font-weight: bold; margin-bottom: 10px;">George Floyd won by breaking the laws</div>
+                    <div style="color: #aaa; font-size: 1.5rem; font-weight: normal;">Well well well</div>
+                </div>
+            `;
+        } else {
+            const winnerName = winnerColor === 'b' ? 'Black' : 'White';
+            msg.textContent = `King captured! ${winnerName} wins.`;
+        }
+        modal.classList.remove('hidden');
+        return; // Stop further checks
+    }
+
+    // --- STANDARD CHESS.JS CHECKS ---
+    if (game.game_over()) {
         if (game.in_checkmate()) {
             const winner = game.turn() === 'w' ? 'Black' : 'White';
             msg.textContent = `Checkmate! ${winner} wins.`;
