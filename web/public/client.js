@@ -631,14 +631,15 @@ function updateAbilityDisplay() {
         const btn = document.getElementById(`${side}-ability-btn`);
         const status = document.getElementById(`${side}-ability-status`);
 
-        if (char === 'bibi') {
+       if (char === 'bibi') {
             const charge = abilities[color].movesSinceLastUltimate;
-            status.textContent = `${charge}/${ULTIMATE_CHARGE_REQ} Moves`;
 
             if (charge >= ULTIMATE_CHARGE_REQ) {
+                status.textContent = 'Ready!';
                 btn.disabled = false || game.turn() !== color;
                 btn.classList.add('ready');
             } else {
+                status.textContent = `${charge}/${ULTIMATE_CHARGE_REQ} Moves`;
                 btn.disabled = true;
                 btn.classList.remove('ready');
             }
