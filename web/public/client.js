@@ -226,6 +226,13 @@ function startGameFlow(selectedChars) {
     
     abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
     document.body.classList.remove('hunting-mode');
+    
+    // Reset AI thinking lock and ensure single-player board is strictly reset
+    aiThinking = false;
+    if (gameMode === 'single') {
+        game.reset();
+    }
+    document.getElementById('game-container').style.display = 'flex'; // Ensure board is visible
 
     // Flip the board if playing solely as black
     isBoardFlipped = false;
@@ -358,7 +365,16 @@ function initGame() {
 
     document.getElementById('restart-btn').addEventListener('click', () => {
         document.getElementById('game-over-modal').classList.add('hidden');
-        document.getElementById('char-select-modal').style.display = 'flex';
+        
+        if (gameMode === 'multi') {
+            // In multiplayer, the safest way to "Play Again" and clear the server room is a clean reload
+            location.reload(); 
+        } else {
+            // In singleplayer, reset the board and go back to character select
+            game.reset(); 
+            document.getElementById('game-container').style.display = 'none';
+            document.getElementById('char-select-modal').style.display = 'flex';
+        }
     });
 
     document.getElementById('bottom-ability-btn').addEventListener('click', () => handleAbilityClick(isBoardFlipped ? 'b' : 'w'));
