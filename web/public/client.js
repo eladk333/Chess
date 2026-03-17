@@ -540,7 +540,7 @@ function updateBoard(animateSlipForSquare = null) {
                 const typeStr = pieceMap[piece.type];
 
                 pieceEl.style.backgroundImage = `url('assets/${colorStr}-${typeStr}.png')`;
-                pieceEl.style.pointerEvents = 'none';
+                //pieceEl.style.pointerEvents = 'none';
                 pieceEl.dataset.square = sqId;
                 pieceEl.dataset.color = piece.color;
 
