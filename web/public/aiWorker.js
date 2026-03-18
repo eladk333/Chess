@@ -395,14 +395,16 @@ function evaluate(game, chars, abilities) {
     let whiteKing = false, blackKing = false;
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
-            if (boardState[r][c]?.type === 'k') {
-                if (boardState[r][c].color === 'w') whiteKing = true;
-                if (boardState[r][c].color === 'b') blackKing = true;
+            const p = boardState[r][c];
+            if (p?.type === 'k') {
+                if (p.color === 'w') whiteKing = true;
+                if (p.color === 'b') blackKing = true;
             }
         }
     }
     if (!whiteKing) return -1000000;
     if (!blackKing) return 1000000;
+
 
     if (game.in_checkmate()) return game.turn() === 'w' ? -100000 : 100000;
     if (game.game_over()) return 0;
@@ -555,7 +557,7 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
     }
 
     // AI logic for Black George Double Move
-    if (chars[color] === 'george' && color === 'b') {
+    if (chars[color] === 'george' && color === 'b' && move.abilityType !== 'george_magic_win') {
         if (!childAbilities[color].georgeSecondMovePending) {
             childAbilities[color].georgeSecondMovePending = true;
             let tokens = childFen.split(' ');
@@ -593,10 +595,12 @@ function quiescenceSearch(fen, alpha, beta, isMaximizing, chars, abilities) {
     if (Date.now() - startTime > TIME_LIMIT_MS) throw 'timeout';
     nodeCount++;
 
-    const game = new Chess(fen);
-    const standPat = evaluate(game, chars, abilities);
+    let game;
+try { game = new Chess(fen); } catch(e) { return 0; }
+const standPat = evaluate(game, chars, abilities);
 
-    if (game.game_over()) return standPat;
+if (Math.abs(standPat) >= 900000) return standPat; // king missing — stop immediately
+if (game.game_over()) return standPat;
 
     if (isMaximizing) {
         if (standPat >= beta) return beta;
@@ -615,7 +619,7 @@ function quiescenceSearch(fen, alpha, beta, isMaximizing, chars, abilities) {
 
     for (const move of captures) {
         const { childFen, childAbilities } = simulateMove(game, fen, move, color, chars, abilities);
-        const nextIsMax = new Chess(childFen).turn() === 'w';
+        const nextIsMax = childFen.split(' ')[1] === 'w';
         const score = quiescenceSearch(childFen, alpha, beta, nextIsMax, chars, childAbilities);
 
         if (isMaximizing) {
@@ -644,8 +648,12 @@ function minimaxSearch(fen, depth, alpha, beta, isMaximizing, chars, abilities) 
         if (alpha >= beta) return ttEntry.score;
     }
 
-    const game = new Chess(fen);
-    if (game.game_over()) return evaluate(game, chars, abilities);
+   let game;
+try { game = new Chess(fen); } catch(e) { return 0; }
+const earlyEval = evaluate(game, chars, abilities);
+if (Math.abs(earlyEval) >= 900000) return earlyEval; // king missing — stop immediately
+if (game.game_over()) return earlyEval;
+
 
     if (depth === 0) return quiescenceSearch(fen, alpha, beta, isMaximizing, chars, abilities);
 
@@ -657,14 +665,16 @@ function minimaxSearch(fen, depth, alpha, beta, isMaximizing, chars, abilities) 
     const abilityMoves = getAbilityMoves(fen, chars, abilities, color);
     const allMoves = [...stdMoves, ...abilityMoves];
 
-    let ttBestMoveStr = ttEntry ? JSON.stringify(ttEntry.bestMove) : null;
-    allMoves.sort((a, b) => {
-        if (ttBestMoveStr) {
-            if (JSON.stringify(a) === ttBestMoveStr) return 10000000;
-            if (JSON.stringify(b) === ttBestMoveStr) return -10000000;
-        }
-        return scoreMoveForOrdering(game, b) - scoreMoveForOrdering(game, a);
-    });
+    const ttBestMove = ttEntry ? ttEntry.bestMove : null;
+allMoves.sort((a, b) => {
+    if (ttBestMove) {
+        const aMatch = a.from === ttBestMove.from && a.to === ttBestMove.to && a.abilityType === ttBestMove.abilityType;
+        const bMatch = b.from === ttBestMove.from && b.to === ttBestMove.to && b.abilityType === ttBestMove.abilityType;
+        if (aMatch) return -1;   // a comes first
+if (bMatch) return 1;    // b comes first
+    }
+    return scoreMoveForOrdering(game, b) - scoreMoveForOrdering(game, a);
+});
 
     if (allMoves.length === 0) return evaluate(game, chars, abilities);
 
@@ -673,7 +683,7 @@ function minimaxSearch(fen, depth, alpha, beta, isMaximizing, chars, abilities) 
 
     for (const move of allMoves) {
         const { childFen, childAbilities } = simulateMove(game, fen, move, color, chars, abilities);
-        const nextIsMax = new Chess(childFen).turn() === 'w';
+        const nextIsMax = childFen.split(' ')[1] === 'w';
 
         const score = minimaxSearch(childFen, depth - 1, alpha, beta, nextIsMax, chars, childAbilities);
 
@@ -718,15 +728,17 @@ function minimaxBestMove(fen, chars, abilities, color) {
         let currentBestScore = isMax ? -Infinity : Infinity;
 
         allMoves.sort((a, b) => {
-            if (JSON.stringify(a) === JSON.stringify(bestMoveOverall)) return 10000000;
-            if (JSON.stringify(b) === JSON.stringify(bestMoveOverall)) return -10000000;
-            return scoreMoveForOrdering(game, b) - scoreMoveForOrdering(game, a);
-        });
+    const aMatch = a.from === bestMoveOverall.from && a.to === bestMoveOverall.to && a.abilityType === bestMoveOverall.abilityType;
+    const bMatch = b.from === bestMoveOverall.from && b.to === bestMoveOverall.to && b.abilityType === bestMoveOverall.abilityType;
+    if (aMatch) return -1;   // a comes first
+if (bMatch) return 1;    // b comes first
+    return scoreMoveForOrdering(game, b) - scoreMoveForOrdering(game, a);
+});
 
         try {
             for (const move of allMoves) {
                 const { childFen, childAbilities } = simulateMove(game, fen, move, color, chars, abilities);
-                const nextIsMax = new Chess(childFen).turn() === 'w';
+                const nextIsMax = childFen.split(' ')[1] === 'w';
 
                 const score = minimaxSearch(childFen, depth - 1, -Infinity, Infinity, nextIsMax, chars, childAbilities);
 
