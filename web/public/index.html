@@ -116,6 +116,10 @@
         </p>
 
         <div class="multiplayer-actions">
+            <div class="multiplayer-mode-toggle" style="display: flex; gap: 10px; margin-bottom: 5px;">
+                <button id="mode-quick" class="menu-btn active-mode" style="flex: 1;">Quick Game</button>
+                <button id="mode-arena" class="menu-btn" style="flex: 1; background-color: #444;">Arena Mode</button>
+            </div>
             <button id="create-room-btn" class="menu-btn multiplayer-primary-btn">Create Room</button>
 
             <div class="multiplayer-divider">
@@ -412,6 +416,40 @@
 
             <button id="start-game-btn" class="menu-btn">Start Game</button>
         </div>
+ </div>
+
+    <div id="arena-draft-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 350; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif;">
+        <div class="modal-content large-modal" style="text-align: center; max-width: 800px; width: 90%;">
+            <h2 style="color: #f0c040; margin-bottom: 10px; font-size: 2.5rem; text-transform: uppercase;">Arena Draft</h2>
+            <p style="color: #aaa; margin-bottom: 20px; font-size: 1.1rem;">Select 4 champions for the Gauntlet. Your opponent won't see your picks.</p>
+            
+            <div id="arena-slots" style="display: flex; gap: 15px; justify-content: center; margin-bottom: 30px;">
+                <div class="draft-slot empty" data-index="0">1</div>
+                <div class="draft-slot empty" data-index="1">2</div>
+                <div class="draft-slot empty" data-index="2">3</div>
+                <div class="draft-slot empty" data-index="3">4</div>
+            </div>
+
+            <div class="char-pool char-options" id="arena-char-pool" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; max-height: 45vh; overflow-y: auto; padding: 10px; text-align: left;">
+                </div>
+
+            <button id="lock-arena-picks-btn" class="menu-btn" style="margin-top: 25px; background-color: #555; width: 50%;" disabled>Lock In Picks</button>
+        </div>
+    </div>
+
+    <div id="arena-transition-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 400; flex-direction: column; align-items: center; justify-content: center; font-family: 'Segoe UI', sans-serif;">
+        <h1 id="arena-match-title" style="font-size: 5rem; color: #f0c040; text-transform: uppercase; letter-spacing: 5px; margin-bottom: 30px; text-shadow: 0 5px 20px rgba(240,192,64,0.4);">Match 1</h1>
+        <div style="display: flex; gap: 80px; font-size: 3rem; color: white;">
+            <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 20px 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="color: #88ceeb; font-size: 1.5rem; text-transform: uppercase; margin-bottom: 10px;">You</div>
+                <div id="arena-score-you" style="font-weight: bold;">0</div>
+            </div>
+            <div style="text-align: center; background: rgba(255,255,255,0.05); padding: 20px 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1);">
+                <div style="color: #ff6b6b; font-size: 1.5rem; text-transform: uppercase; margin-bottom: 10px;">Opponent</div>
+                <div id="arena-score-opp" style="font-weight: bold;">0</div>
+            </div>
+        </div>
+        <p id="arena-transition-status" style="margin-top: 40px; color: #aaa; font-style: italic; font-size: 1.2rem;">Preparing the board...</p>
     </div>
 </body>
 

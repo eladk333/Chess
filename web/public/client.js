@@ -3,7 +3,8 @@ let myColor = null;
 let currentRoom = null;
 let gameMode = null; // 'single' or 'multi'
 let isBoardFlipped = false; // Controls the visual rotation of the board
-const game = new Chess();
+let selectedMultiplayerMode = 'quick'; // 'quick' or 'arena'
+let arenaRoster = [];const game = new Chess();
 const boardEl = document.getElementById('board');
 
 // Helper to assign UI components to the correct physical side of the screen
@@ -123,8 +124,24 @@ document.getElementById('btn-back-multiplayer').addEventListener('click', () => 
     document.getElementById('main-menu').style.display = 'flex';
 });
 // --- Multiplayer UI Wiring ---
+document.getElementById('mode-quick').addEventListener('click', (e) => {
+    selectedMultiplayerMode = 'quick';
+    e.target.classList.add('active-mode');
+    e.target.style.backgroundColor = ''; // Restores green CSS
+    document.getElementById('mode-arena').classList.remove('active-mode');
+    document.getElementById('mode-arena').style.backgroundColor = '#444'; // Greys out arena
+});
+
+document.getElementById('mode-arena').addEventListener('click', (e) => {
+    selectedMultiplayerMode = 'arena';
+    e.target.classList.add('active-mode');
+    e.target.style.backgroundColor = ''; // Restores green CSS
+    document.getElementById('mode-quick').classList.remove('active-mode');
+    document.getElementById('mode-quick').style.backgroundColor = '#444'; // Greys out quick
+});
+
 document.getElementById('create-room-btn').addEventListener('click', () => {
-    socket.emit('create_room');
+    socket.emit('create_room', selectedMultiplayerMode);
 });
 
 document.getElementById('join-room-btn').addEventListener('click', () => {
@@ -143,6 +160,178 @@ socket.on('room_created', (roomId) => {
 
 socket.on('player_color', (color) => {
     myColor = color;
+});
+
+// Handle new room join architecture
+socket.on('room_joined', (data) => {
+    document.getElementById('multiplayer-menu').style.display = 'none';
+    
+    if (data.mode === 'arena') {
+        selectedMultiplayerMode = 'arena';
+        initArenaDraft();
+    } else {
+        selectedMultiplayerMode = 'quick';
+        myColor = data.players.w === socket.id ? 'w' : 'b';
+        socket.emit('player_color', myColor); // Ensure color is set
+        document.getElementById('game-container').style.display = 'flex';
+        
+        if (myColor === 'w') {
+            document.querySelector('.select-col:last-child').style.display = 'none';
+        } else {
+            document.querySelector('.select-col:first-child').style.display = 'none';
+        }
+
+        document.querySelectorAll('.player-type-row').forEach(row => row.style.display = 'none');
+        document.getElementById('start-game-btn').textContent = 'Ready';
+        document.getElementById('char-select-modal').style.display = 'flex';
+        updateBoard();
+    }
+});
+
+function initArenaDraft() {
+    document.getElementById('arena-draft-modal').style.display = 'flex';
+    arenaRoster = [];
+    
+    // Copy the white char options to the arena pool
+    const poolContainer = document.getElementById('arena-char-pool');
+    poolContainer.innerHTML = document.querySelector('#white-char-options').innerHTML;
+    
+    poolContainer.querySelectorAll('.char-card').forEach(card => {
+        card.classList.remove('selected');
+        // Clear any old inline styles from previous matches
+        card.style.opacity = '1';
+        card.style.cursor = 'pointer';
+        card.style.borderColor = ''; 
+
+        card.addEventListener('click', () => {
+            const charId = card.dataset.char;
+            // CHECK: Prevent duplicates from being added!
+            if (arenaRoster.length < 4 && !arenaRoster.includes(charId)) {
+                arenaRoster.push(charId);
+                updateDraftSlots();
+            }
+        });
+    });
+
+    // Handle clicking a slot to remove a pick
+    document.querySelectorAll('.draft-slot').forEach(slot => {
+        // Clear old event listeners by cloning the node to prevent double-firing bugs
+        const newSlot = slot.cloneNode(true);
+        slot.parentNode.replaceChild(newSlot, slot);
+        
+        newSlot.addEventListener('click', () => {
+            const index = parseInt(newSlot.dataset.index);
+            if (arenaRoster.length > index) {
+                arenaRoster.splice(index, 1);
+                updateDraftSlots();
+            }
+        });
+    });
+    
+    // Initial UI reset
+    updateDraftSlots(); 
+}
+
+function updateDraftSlots() {
+    // 1. Update the slots at the top
+    const slots = document.querySelectorAll('.draft-slot');
+    slots.forEach((slot, index) => {
+        if (arenaRoster[index]) {
+            slot.classList.add('filled');
+            slot.style.backgroundImage = `url('assets/players/${avatarMap[arenaRoster[index]]}')`;
+        } else {
+            slot.classList.remove('filled');
+            slot.style.backgroundImage = 'none';
+        }
+    });
+
+    // 2. Visually disable the picked characters in the pool
+    const poolCards = document.querySelectorAll('#arena-char-pool .char-card');
+    poolCards.forEach(card => {
+        if (arenaRoster.includes(card.dataset.char)) {
+            card.style.opacity = '0.3';
+            card.style.cursor = 'not-allowed';
+            card.style.borderColor = '#777';
+        } else {
+            card.style.opacity = '1';
+            card.style.cursor = 'pointer';
+            card.style.borderColor = ''; // Reverts to CSS default
+        }
+    });
+
+    // 3. Update Lock Button state
+    const lockBtn = document.getElementById('lock-arena-picks-btn');
+    if (arenaRoster.length === 4) {
+        lockBtn.disabled = false;
+        lockBtn.style.backgroundColor = '#5c8a3f';
+    } else {
+        lockBtn.disabled = true;
+        lockBtn.style.backgroundColor = '#555';
+    }
+}
+document.getElementById('lock-arena-picks-btn').addEventListener('click', () => {
+    document.getElementById('lock-arena-picks-btn').textContent = "Waiting for opponent...";
+    document.getElementById('lock-arena-picks-btn').disabled = true;
+    socket.emit('arena_picks_locked', { roomId: currentRoom, roster: arenaRoster });
+});
+
+socket.on('arena_match_start', (data) => {
+    myColor = data.color;
+    game.load(data.fen);
+    
+    document.getElementById('arena-draft-modal').style.display = 'none';
+    document.getElementById('game-over-modal').classList.add('hidden');
+    
+    const transition = document.getElementById('arena-transition-overlay');
+    transition.style.display = 'flex';
+    
+    document.getElementById('arena-match-title').textContent = `Match ${data.matchNum}`;
+    document.getElementById('arena-score-you').textContent = data.scores[socket.id];
+    
+    const oppId = Object.keys(data.scores).find(id => id !== socket.id);
+    document.getElementById('arena-score-opp').textContent = data.scores[oppId];
+    document.getElementById('arena-transition-status').textContent = 'Preparing the board...';
+
+    setTimeout(() => {
+        transition.style.display = 'none';
+        startGameFlow({ 
+            w: myColor === 'w' ? data.myChar : data.opponentChar, 
+            b: myColor === 'b' ? data.myChar : data.opponentChar 
+        });
+    }, 3000);
+});
+
+socket.on('arena_match_over_announcement', (data) => {
+    const modal = document.getElementById('game-over-modal');
+    const msg = document.getElementById('game-over-message');
+    document.getElementById('restart-btn').style.display = 'none'; // Hide restart in arena
+
+    if (data.winnerColor === 'draw') {
+        msg.textContent = 'Match Drawn! Next match starting soon...';
+    } else {
+        const winnerName = data.winnerColor === myColor ? 'You Win!' : 'Opponent Wins!';
+        msg.textContent = `${winnerName} Next match starting soon...`;
+    }
+    modal.classList.remove('hidden');
+});
+
+socket.on('arena_tournament_over', (data) => {
+    const modal = document.getElementById('game-over-modal');
+    const msg = document.getElementById('game-over-message');
+    document.getElementById('restart-btn').style.display = 'block';
+    
+    const myScore = data.scores[socket.id];
+    const oppId = Object.keys(data.scores).find(id => id !== socket.id);
+    const oppScore = data.scores[oppId];
+
+    if (myScore > oppScore) {
+        msg.textContent = `🏆 TOURNAMENT WINNER! (${myScore} to ${oppScore})`;
+    } else if (oppScore > myScore) {
+        msg.textContent = `💀 DEFEAT! (${myScore} to ${oppScore})`;
+    } else {
+        msg.textContent = `🤝 TOURNAMENT DRAW! (${myScore} to ${oppScore})`;
+    }
+    modal.classList.remove('hidden');
 });
 
 // --- Game Loop Sync ---
@@ -1558,6 +1747,10 @@ function checkGameOver() {
     if (!whiteKing || !blackKing) {
         const winnerColor = !whiteKing ? 'b' : 'w';
         
+        if (gameMode === 'multi' && selectedMultiplayerMode === 'arena' && myColor === winnerColor) {
+            socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: winnerColor });
+        }
+
         if (chars[winnerColor] === 'george') {
             msg.innerHTML = `
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
@@ -1575,12 +1768,21 @@ function checkGameOver() {
 
     // --- STANDARD CHESS.JS CHECKS ---
     if (game.game_over()) {
+        let winnerCol = null;
         if (game.in_checkmate()) {
-            const winner = game.turn() === 'w' ? 'Black' : 'White';
+            winnerCol = game.turn() === 'w' ? 'b' : 'w';
+            const winner = winnerCol === 'b' ? 'Black' : 'White';
             msg.textContent = `Checkmate! ${winner} wins.`;
         } else if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
+            winnerCol = 'draw';
             msg.textContent = 'Game drawn!';
         }
+
+        if (gameMode === 'multi' && selectedMultiplayerMode === 'arena' && (myColor === winnerCol || winnerCol === 'draw' && myColor === 'w')) {
+            // Only emit from one client on draw to prevent double counting
+            socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: winnerCol });
+        }
+
         modal.classList.remove('hidden');
     }
 }

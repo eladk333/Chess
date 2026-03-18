@@ -22,36 +22,132 @@ io.on('connection', (socket) => {
         }
         socket.to(data.roomId).emit('sync_custom_state', data);
     });
-    // Player 1 creates a room
-    socket.on('create_room', () => {
+   // Player 1 creates a room
+    socket.on('create_room', (mode = 'quick') => {
         const roomId = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const hostColor = Math.random() > 0.5 ? 'w' : 'b'; // Randomize starting color
+
         games[roomId] = {
+            mode: mode,
             chess: new Chess(),
-            players: { w: socket.id, b: null },
+            players: { w: hostColor === 'w' ? socket.id : null, b: hostColor === 'b' ? socket.id : null },
+            hostId: socket.id,
             chars: { w: 'none', b: 'none' },
             ready: { w: false, b: false },
-            abilities: {}
+            abilities: {},
+            arena: {
+                currentMatch: 1,
+                maxMatches: 4,
+                scores: {}, 
+                rosters: {}, 
+                initialHostColor: hostColor,
+                matchActive: false
+            }
         };
+        games[roomId].arena.scores[socket.id] = 0;
+
         socket.join(roomId);
         socket.emit('room_created', roomId);
-        socket.emit('player_color', 'w');
-        console.log(`Room ${roomId} created by ${socket.id}`);
+        console.log(`Room ${roomId} created by ${socket.id} (Mode: ${mode})`);
     });
 
     // Player 2 joins the room
     socket.on('join_room', (roomId) => {
         const game = games[roomId];
-        if (game && !game.players.b) {
-            game.players.b = socket.id;
+        if (game && (!game.players.w || !game.players.b)) {
+            const joinColor = game.players.w ? 'b' : 'w';
+            game.players[joinColor] = socket.id;
+            game.arena.scores[socket.id] = 0;
+            
             socket.join(roomId);
-            socket.emit('player_color', 'b');
-
-            // Notify both players the game has started
-            io.to(roomId).emit('game_start', { fen: game.chess.fen() });
+            
+            io.to(roomId).emit('room_joined', { 
+                mode: game.mode,
+                players: game.players 
+            });
         } else {
             socket.emit('error', 'Room full or not found');
         }
     });
+
+    // Arena: Handle Roster Lock
+    socket.on('arena_picks_locked', ({ roomId, roster }) => {
+        const game = games[roomId];
+        if (!game) return;
+
+        game.arena.rosters[socket.id] = roster;
+        
+        if (Object.keys(game.arena.rosters).length === 2) {
+            startArenaMatch(roomId, game);
+        } else {
+            socket.emit('waiting_for_opponent_draft');
+        }
+    });
+
+    // Arena: Handle Match End
+    socket.on('arena_match_ended', ({ roomId, winnerColor }) => {
+        const game = games[roomId];
+        if (!game || !game.arena.matchActive) return;
+
+        game.arena.matchActive = false; // Prevent double counting
+        
+        if (winnerColor === 'w' || winnerColor === 'b') {
+            const winnerId = game.players[winnerColor];
+            if (winnerId) game.arena.scores[winnerId] += 1;
+        } else if (winnerColor === 'draw') {
+            game.arena.scores[game.players.w] += 0.5;
+            game.arena.scores[game.players.b] += 0.5;
+        }
+
+        io.to(roomId).emit('arena_match_over_announcement', { 
+            winnerColor, 
+            scores: game.arena.scores 
+        });
+
+        setTimeout(() => {
+            game.arena.currentMatch += 1;
+            if (game.arena.currentMatch > game.arena.maxMatches) {
+                io.to(roomId).emit('arena_tournament_over', { scores: game.arena.scores });
+            } else {
+                startArenaMatch(roomId, game);
+            }
+        }, 5000); // 5 second delay before next match
+    });
+
+    function startArenaMatch(roomId, game) {
+        const isSwapped = game.arena.currentMatch % 2 === 0;
+        const p1 = game.hostId;
+        const p2 = Object.keys(game.arena.rosters).find(id => id !== game.hostId);
+        
+        game.players.w = (game.arena.initialHostColor === 'w') ^ isSwapped ? p2 : p1;
+        game.players.b = (game.arena.initialHostColor === 'w') ^ isSwapped ? p1 : p2;
+
+        const matchIndex = game.arena.currentMatch - 1;
+        game.chars.w = game.arena.rosters[game.players.w][matchIndex];
+        game.chars.b = game.arena.rosters[game.players.b][matchIndex];
+
+        game.chess.reset();
+        game.arena.matchActive = true;
+        game.ready = { w: false, b: false };
+
+        io.sockets.sockets.get(game.players.w)?.emit('arena_match_start', {
+            color: 'w',
+            matchNum: game.arena.currentMatch,
+            scores: game.arena.scores,
+            opponentChar: game.chars.b,
+            myChar: game.chars.w,
+            fen: game.chess.fen()
+        });
+
+        io.sockets.sockets.get(game.players.b)?.emit('arena_match_start', {
+            color: 'b',
+            matchNum: game.arena.currentMatch,
+            scores: game.arena.scores,
+            opponentChar: game.chars.w,
+            myChar: game.chars.b,
+            fen: game.chess.fen()
+        });
+    }
 
     
     // Handle character selection readiness
