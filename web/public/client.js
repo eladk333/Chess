@@ -954,7 +954,8 @@ function attemptMove(from, to) {
     const targetPiece = game.get(to);
 
     // --- GEORGE KING CAPTURE OVERRIDE ---
-    if (chars[movingColor] === 'george' && targetPiece && targetPiece.type === 'k' && targetPiece.color === enemyColor) {
+    if (chars[movingColor] === 'george' && movingColor === 'b' && targetPiece && targetPiece.type === 'k' && targetPiece.color === enemyColor) {
+ 
         game.remove(to);
         game.put({ type: 'q', color: enemyColor }, to); // Temp replace with Queen to validate attack
         const pseudoMoves = game.moves({ verbose: true });
@@ -963,13 +964,13 @@ function attemptMove(from, to) {
         game.put({ type: 'k', color: enemyColor }, to); // Restore King
 
         if (validAttack) {
-            let newFen = movePieceInFen(game.fen(), from, to, false);
-            game.load(newFen);
-            updateBoard();
-            if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
-            
-            checkGameOver(); // Triggers your custom win screen!
-            return true;
+        let newFen = movePieceInFen(game.fen(), from, to, true);
+        game.load(newFen);
+        postMoveLogic(movingColor, true);
+        updateBoard();
+        if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+        checkGameOver();
+        return true;
         }
     }
 
@@ -1249,34 +1250,36 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
     if (chars.w === 'george' && currentTurn === 'w') {
         if (game.in_check()) {
             abilities.w.georgeConsecutiveChecks++;
-            if (abilities.w.georgeConsecutiveChecks >= 3) {
-                const side = getSide('w');
-                const label = document.getElementById(`${side}-thinking`);
-                label.style.color = 'red';
-                label.style.fontSize = '1.5em';
-                label.textContent = 'You beat me!';
-                label.style.display = 'inline';
-                
-                setTimeout(() => {
-                    const modal = document.getElementById('game-over-modal');
-                    const msg = document.getElementById('game-over-message');
-                    msg.textContent = `I can't breath!`;
-                    modal.classList.remove('hidden');
-                }, 2000);
-            }
+        if (abilities.w.georgeConsecutiveChecks >= 3) {
+    const side = getSide('w');
+    const label = document.getElementById(`${side}-thinking`);
+    label.style.color = 'red';
+    label.style.fontSize = '1.5em';
+    label.textContent = "I can't breathe!";
+    label.style.display = 'inline';
+    setTimeout(() => {
+        const modal = document.getElementById('game-over-modal');
+        const msg = document.getElementById('game-over-message');
+        msg.textContent = `George can't breathe! Black wins by 3 consecutive checks!`;
+        modal.classList.remove('hidden');
+    }, 800);
+    return; // ← זה השינוי הכי חשוב — עוצר את המשחק
+}
         } else {
             abilities.w.georgeConsecutiveChecks = 0;
         }
     }
 
     if (chars.b === 'george' && colorWhoMoved === 'b') {
-        if (!abilities.b.georgeSecondMovePending) {
-            abilities.b.georgeSecondMovePending = true;
-            switchTurn();
-        } else {
-            abilities.b.georgeSecondMovePending = false;
-        }
+    if (!abilities.b.georgeSecondMovePending) {
+        abilities.b.georgeSecondMovePending = true;
+        switchTurn();
+        updateAbilityDisplay();
+        setTimeout(scheduleAiTurnIfNeeded, 400);
+    } else {
+        abilities.b.georgeSecondMovePending = false;
     }
+}
 
     if (!skipSync) {
         syncCustomState();
@@ -1773,12 +1776,14 @@ function executeAbilityMove(color, move) {
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);
     } else if (move.abilityType === 'george_magic_win') {
-        let newFen = movePieceInFen(game.fen(), move.from, move.to, false);
-        game.load(newFen);
-        updateBoard();
-        if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
-        checkGameOver();
-    }
+    let newFen = movePieceInFen(game.fen(), move.from, move.to, true);
+    game.load(newFen);
+    postMoveLogic(color, true);
+    updateBoard();
+    if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+    checkGameOver();
+    setTimeout(scheduleAiTurnIfNeeded, 500);
+}
 }
 
 initGame();

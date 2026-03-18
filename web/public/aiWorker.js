@@ -324,7 +324,7 @@ function getAbilityMoves(fen, chars, abilities, color) {
     }
 
     // AI Logic for George capturing the King directly
-    if (char === 'george') {
+    if (char === 'george' && color === 'b') {
         const enemyColor = color === 'w' ? 'b' : 'w';
         const boardState = game.board();
         let enemyKingSq = null;
@@ -375,7 +375,7 @@ function applyAbilityMove(fen, move) {
     } else if (move.abilityType === 'diddy_baby_oil' || move.abilityType === 'aheud_smoke') {
         return fen;
     } else if (move.abilityType === 'george_magic_win') {
-        return movePieceInFen(game.fen(), move.from, move.to, false);
+    return movePieceInFen(game.fen(), move.from, move.to, true);
     } else if (move.abilityType === 'trump_wall') {
         const tokens = game.fen().split(' ');
         tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
@@ -568,16 +568,16 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
 
     // AI logic for White George getting checked
     let nextTurn = childFen.split(' ')[1];
-    if (chars[nextTurn] === 'george' && nextTurn === 'w') {
-        try {
-            let tempGame = new Chess(childFen);
-            if (tempGame.in_check()) {
-                childAbilities.w.georgeConsecutiveChecks = (childAbilities.w.georgeConsecutiveChecks || 0) + 1;
-            } else {
-                childAbilities.w.georgeConsecutiveChecks = 0;
-            }
-        } catch(e) {}
-    }
+    if (chars[nextTurn] === 'george') {
+    try {
+        let tempGame = new Chess(childFen);
+        if (tempGame.in_check()) {
+            childAbilities[nextTurn].georgeConsecutiveChecks = (childAbilities[nextTurn].georgeConsecutiveChecks || 0) + 1;
+        } else {
+            childAbilities[nextTurn].georgeConsecutiveChecks = 0;
+        }
+    } catch(e) {}
+}
 
     return { childFen, childAbilities };
 }
