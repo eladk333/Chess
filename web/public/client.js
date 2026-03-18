@@ -1469,7 +1469,7 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
             // Quick Game / Singleplayer fallback
             const modal = document.getElementById('game-over-modal');
             const msg = document.getElementById('game-over-message');
-            msg.textContent = `George can't breathe! Black wins by 3 consecutive checks!`;
+            msg.textContent = `I can't breathe!`;
             modal.classList.remove('hidden');
         }
     }, 800);
@@ -1498,6 +1498,16 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
             abilities.b.georgeSecondMovePending = true;
             switchTurn();
             updateAbilityDisplay();
+            
+            // Force server synchronization for the extra turn
+            if (currentRoom && myColor === 'b') {
+                socket.emit('sync_custom_state', { 
+                    roomId: currentRoom, 
+                    fen: game.fen(), 
+                    abilities: abilities 
+                });
+            }
+            
             setTimeout(scheduleAiTurnIfNeeded, 400);
         } else {
             abilities.b.georgeSecondMovePending = false;
