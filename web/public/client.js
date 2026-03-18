@@ -1481,15 +1481,28 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
     }
 
     if (chars.b === 'george' && colorWhoMoved === 'b') {
-    if (!abilities.b.georgeSecondMovePending) {
-        abilities.b.georgeSecondMovePending = true;
-        switchTurn();
-        updateAbilityDisplay();
-        setTimeout(scheduleAiTurnIfNeeded, 400);
-    } else {
-        abilities.b.georgeSecondMovePending = false;
+        let whiteKingAlive = false;
+        const boardState = game.board();
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = boardState[r][c];
+                if (p && p.type === 'k' && p.color === 'w') {
+                    whiteKingAlive = true;
+                }
+            }
+        }
+
+        if (!whiteKingAlive || game.game_over()) {
+            abilities.b.georgeSecondMovePending = false;
+        } else if (!abilities.b.georgeSecondMovePending) {
+            abilities.b.georgeSecondMovePending = true;
+            switchTurn();
+            updateAbilityDisplay();
+            setTimeout(scheduleAiTurnIfNeeded, 400);
+        } else {
+            abilities.b.georgeSecondMovePending = false;
+        }
     }
-}
 
     if (!skipSync) {
         syncCustomState();

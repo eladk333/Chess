@@ -558,7 +558,20 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
 
     // AI logic for Black George Double Move
     if (chars[color] === 'george' && color === 'b' && move.abilityType !== 'george_magic_win') {
-        if (!childAbilities[color].georgeSecondMovePending) {
+        let tempGame = new Chess(childFen);
+        let wKingAlive = false;
+        const bState = tempGame.board();
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (bState[r][c]?.type === 'k' && bState[r][c]?.color === 'w') {
+                    wKingAlive = true;
+                }
+            }
+        }
+
+        if (!wKingAlive || tempGame.game_over()) {
+            childAbilities[color].georgeSecondMovePending = false;
+        } else if (!childAbilities[color].georgeSecondMovePending) {
             childAbilities[color].georgeSecondMovePending = true;
             let tokens = childFen.split(' ');
             tokens[1] = 'b';
