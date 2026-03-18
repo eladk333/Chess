@@ -229,8 +229,10 @@ function startGameFlow(selectedChars) {
     
     // Reset AI thinking lock and ensure single-player board is strictly reset
     aiThinking = false;
-    if (gameMode === 'single') {
-        game.reset();
+    const startingFen = generateCustomFen(chars.w, chars.b);
+    game.load(startingFen);
+    if (gameMode === 'multi') {
+        syncCustomState();
     }
     document.getElementById('game-container').style.display = 'flex'; // Ensure board is visible
 
@@ -326,9 +328,56 @@ const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
 const avatarMap = {
-   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif'
+   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jpg'
 };
+function generateCustomFen(wChar, bChar) {
+    let grid = [
+        ['r','n','b','q','k','b','n','r'],
+        ['p','p','p','p','p','p','p','p'],
+        ['','','','','','','',''],
+        ['','','','','','','',''],
+        ['','','','','','','',''],
+        ['','','','','','','',''],
+        ['P','P','P','P','P','P','P','P'],
+        ['R','N','B','Q','K','B','N','R']
+    ];
 
+    if (bChar === 'stalin') {
+        grid[0] = ['','','','','k','','',''];
+        grid[1] = ['p','p','p','p','p','p','p','p'];
+        grid[2] = ['p','p','p','p','p','p','p','p'];
+        grid[3] = ['p','p','p','p','p','p','p','p'];
+    }
+    if (wChar === 'stalin') {
+        grid[7] = ['','','','','K','','',''];
+        grid[6] = ['P','P','P','P','P','P','P','P'];
+        grid[5] = ['P','P','P','P','P','P','P','P'];
+        grid[4] = ['P','P','P','P','P','P','P','P'];
+    }
+
+    let fenRows = [];
+    for (let r = 0; r < 8; r++) {
+        let rowStr = '';
+        let emptyCount = 0;
+        for (let c = 0; c < 8; c++) {
+            if (grid[r][c] === '') {
+                emptyCount++;
+            } else {
+                if (emptyCount > 0) { rowStr += emptyCount; emptyCount = 0; }
+                rowStr += grid[r][c];
+            }
+        }
+        if (emptyCount > 0) rowStr += emptyCount;
+        fenRows.push(rowStr);
+    }
+
+    let castling = '';
+    if (wChar !== 'stalin') castling += 'KQ';
+    if (bChar !== 'stalin') castling += 'kq';
+    if (castling === '') castling = '-';
+
+    return `${fenRows.join('/')} w ${castling} - 0 1`;
+}
 function initGame() {
     createBoard();
     playSound('start');
@@ -393,6 +442,7 @@ function formatCharName(charId) {
     if (charId === 'aheud') return 'Aheud Barak';
     if (charId === 'trump') return 'Donald Trump';
     if (charId === 'george') return 'George Floyd';
+    if (charId === 'stalin') return 'Joseph Stalin';
     return '';
 }
 
@@ -438,6 +488,9 @@ function setupAbilityUI(color, side) {
         btn.textContent = 'Passive';
         if (color === 'b') status.textContent = 'Double Move';
         if (color === 'w') status.textContent = 'Fragile Ego';
+    } else if (chars[color] === 'stalin') {
+        btn.textContent = 'Passive';
+        status.textContent = 'Soviet Wave';
     }
 }
 
