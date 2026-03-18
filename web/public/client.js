@@ -424,6 +424,10 @@ function startGameFlow(selectedChars) {
     // Reset AI thinking lock and ensure single-player board is strictly reset
     aiThinking = false;
     const startingFen = generateCustomFen(chars.w, chars.b);
+    
+    lastFenForHighlight = startingFen;
+    lastHighlightSquares = [];
+    
     game.load(startingFen);
     if (gameMode === 'multi') {
         syncCustomState();
@@ -503,6 +507,30 @@ const CAPTURE_ORDER = ['p', 'n', 'b', 'r', 'q'];
 
 let selectedSquare = null;
 let preventClick = false;
+
+let lastFenForHighlight = null;
+let lastHighlightSquares = [];
+
+// Manually parses FEN strings to find changed squares
+function getChangedSquares(fen1, fen2) {
+    if (!fen1 || !fen2) return [];
+    const changed = [];
+    const b1 = fen1.split(' ')[0].split('/');
+    const b2 = fen2.split(' ')[0].split('/');
+    
+    for (let r = 0; r < 8; r++) {
+        let a1 = [], a2 = [];
+        // Convert FEN rows into simple 8-length arrays
+        for (let char of b1[r]) isNaN(char) ? a1.push(char) : a1.push(...Array(parseInt(char)).fill(''));
+        for (let char of b2[r]) isNaN(char) ? a2.push(char) : a2.push(...Array(parseInt(char)).fill(''));
+        
+        // Compare the squares
+        for (let c = 0; c < 8; c++) {
+            if (a1[c] !== a2[c]) changed.push(String.fromCharCode(97 + c) + (8 - r));
+        }
+    }
+    return changed;
+}
 
 
 const playerTypes = { w: 'human', b: 'human' };
@@ -831,13 +859,20 @@ function updateBoard(animateSlipForSquare = null) {
     });
 
     const boardState = game.board();
-    let moveHistory = game.history({ verbose: true });
-    let lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
-
-    if (lastMove) {
-        document.getElementById(lastMove.from).classList.add('highlight');
-        document.getElementById(lastMove.to).classList.add('highlight');
+    const currentFen = game.fen();
+    // Only check for highlights if the actual piece positions changed
+    if (lastFenForHighlight && lastFenForHighlight.split(' ')[0] !== currentFen.split(' ')[0]) {
+        const changed = getChangedSquares(lastFenForHighlight, currentFen);
+        if (changed.length > 0) {
+            lastHighlightSquares = changed;
+        }
     }
+    lastFenForHighlight = currentFen;
+
+    lastHighlightSquares.forEach(sq => {
+        const el = document.getElementById(sq);
+        if (el) el.classList.add('highlight');
+    });
 
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
