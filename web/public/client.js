@@ -409,6 +409,11 @@ function startGameFlow(selectedChars) {
     } else {
         playerTypes.w = 'human';
         playerTypes.b = 'human';
+        
+        // If playing multiplayer and YOUR character is Dvir, let Stockfish take the wheel
+        if (myColor && chars[myColor] === 'dvir') {
+            playerTypes[myColor] = 'stockfish';
+        }
     }
 
     abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
