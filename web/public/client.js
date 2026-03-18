@@ -377,6 +377,7 @@ socket.on('sync_custom_state', (data) => {
         Object.assign(abilities.b, data.abilities.b);
     }
     updateBoard();
+    scheduleAiTurnIfNeeded();
 });
 socket.on('invalid_move', (data) => {
     game.load(data.fen);
@@ -1959,7 +1960,7 @@ function handleStockfishResponse(uciMove) {
         promotion: uciMove.length > 4 ? uciMove[4] : 'q'
     };
 
-    const success = attemptMove(move.from, move.to);
+   const success = attemptMove(move.from, move.to);
     if (!success) {
         const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
         if (!isBlockedByWall(game.fen(), move.from, move.to, allWalls)) {
@@ -1968,18 +1969,20 @@ function handleStockfishResponse(uciMove) {
                 postMoveLogic(color);
                 updateBoard();
                 setTimeout(scheduleAiTurnIfNeeded, 500);
+                return;
             }
+        }
+
+        // Fallback: Stockfish's move was blocked or illegal — pick any valid move
+        const validMoves = game.moves({ verbose: true }).filter(m => !isBlockedByWall(game.fen(), m.from, m.to, allWalls));
+        if (validMoves.length > 0) {
+            const randomFallback = validMoves[Math.floor(Math.random() * validMoves.length)];
+            game.move(randomFallback);
+            postMoveLogic(color);
+            updateBoard();
+            setTimeout(scheduleAiTurnIfNeeded, 500);
         } else {
-            // Stockfish doesn't know about walls and tried to cheat!
-            // Force a random valid move to prevent a soft-lock.
-            const validMoves = game.moves({ verbose: true }).filter(m => !isBlockedByWall(game.fen(), m.from, m.to, allWalls));
-            if (validMoves.length > 0) {
-                const randomFallback = validMoves[Math.floor(Math.random() * validMoves.length)];
-                game.move(randomFallback);
-                postMoveLogic(color);
-                updateBoard();
-                setTimeout(scheduleAiTurnIfNeeded, 500);
-            }
+            checkGameOver();
         }
     }
 }
@@ -1995,7 +1998,7 @@ function executeAbilityMove(color, move) {
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);
 
-    } else if (move.abilityType === 'epstein_buy') {
+  } else if (move.abilityType === 'epstein_buy') {
     const targetPiece = game.get(move.sq);
     const availablePts = getCapturedPointsInfo(color).pointsAvailable;
 
@@ -2006,19 +2009,30 @@ function executeAbilityMove(color, move) {
         targetPiece.type !== move.pieceType ||
         availablePts < move.frontendCost
     ) {
-        setTimeout(scheduleAiTurnIfNeeded, 0);
+        aiThinking = false;
+        setTimeout(scheduleAiTurnIfNeeded, 300);
         return;
     }
 
+    const fenBeforeBuy = game.fen();
     game.remove(move.sq);
     game.put({ type: move.pieceType, color: color }, move.sq);
-    abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
     switchTurn();
+
+    try {
+        new Chess(game.fen());
+    } catch (e) {
+        game.load(fenBeforeBuy);
+        aiThinking = false;
+        setTimeout(scheduleAiTurnIfNeeded, 300);
+        return;
+    }
+
+    abilities[color].spentPoints = (abilities[color].spentPoints || 0) + move.frontendCost;
     postMoveLogic(color, true);
     syncCustomState();
     updateBoard();
     setTimeout(scheduleAiTurnIfNeeded, 500);
-
     } else if (move.abilityType === 'kirk_snipe') {
         abilities[color].uniSniperActive = false;
         abilities[color].movesSinceUniSniper = 0;
