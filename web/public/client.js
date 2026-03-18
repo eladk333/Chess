@@ -522,7 +522,7 @@ const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
 const avatarMap = {
-   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jpg'
+   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jfif'
 };
 function generateCustomFen(wChar, bChar) {
     let grid = [
@@ -1431,11 +1431,19 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
 
     if (chars[colorWhoMoved] === 'shlomo') {
         setTimeout(() => {
-            const modal = document.getElementById('game-over-modal');
-            const msg = document.getElementById('game-over-message');
-            const winner = colorWhoMoved === 'w' ? 'White (Shlomo)' : 'Black (Shlomo)';
-            msg.textContent = `Checkmate! ${winner} wins!`;
-            modal.classList.remove('hidden');
+            if (gameMode === 'multi' && selectedMultiplayerMode === 'arena') {
+                // In Arena Mode, tell the server to tally the score and start the next match
+                if (myColor === colorWhoMoved) {
+                    socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: colorWhoMoved });
+                }
+            } else {
+                // Quick Game / Singleplayer fallback
+                const modal = document.getElementById('game-over-modal');
+                const msg = document.getElementById('game-over-message');
+                const winner = colorWhoMoved === 'w' ? 'White (Shlomo)' : 'Black (Shlomo)';
+                msg.textContent = `Checkmate! ${winner} wins!`;
+                modal.classList.remove('hidden');
+            }
         }, 400);
     }
 
@@ -1452,10 +1460,18 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
     label.textContent = "I can't breathe!";
     label.style.display = 'inline';
     setTimeout(() => {
-        const modal = document.getElementById('game-over-modal');
-        const msg = document.getElementById('game-over-message');
-        msg.textContent = `George can't breathe! Black wins by 3 consecutive checks!`;
-        modal.classList.remove('hidden');
+        if (gameMode === 'multi' && selectedMultiplayerMode === 'arena') {
+            // In Arena Mode, Black wins
+            if (myColor === 'b') {
+                socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: 'b' });
+            }
+        } else {
+            // Quick Game / Singleplayer fallback
+            const modal = document.getElementById('game-over-modal');
+            const msg = document.getElementById('game-over-message');
+            msg.textContent = `George can't breathe! Black wins by 3 consecutive checks!`;
+            modal.classList.remove('hidden');
+        }
     }, 800);
     return; // ← זה השינוי הכי חשוב — עוצר את המשחק
 }
