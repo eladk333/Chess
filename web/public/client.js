@@ -417,19 +417,31 @@ function startGameFlow(selectedChars) {
         }
     }
 
-    abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
+   abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
     
-    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
+    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
     document.body.classList.remove('hunting-mode');
     
     // Reset AI thinking lock and ensure single-player board is strictly reset
     aiThinking = false;
     const startingFen = generateCustomFen(chars.w, chars.b);
     
-    lastFenForHighlight = startingFen;
+   lastFenForHighlight = startingFen;
     lastHighlightSquares = [];
     
     game.load(startingFen);
+
+    // --- DYNAMICALLY TRACK STARTING PIECES FOR THE VISUAL UI ---
+    matchStartCounts = { w: { 'p': 0, 'n': 0, 'b': 0, 'r': 0, 'q': 0 }, b: { 'p': 0, 'n': 0, 'b': 0, 'r': 0, 'q': 0 } };
+    const initialBoard = game.board();
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const p = initialBoard[r][c];
+            if (p && p.type !== 'k') matchStartCounts[p.color][p.type]++;
+        }
+    }
+    // -----------------------------------------------------------
+
     if (gameMode === 'multi') {
         syncCustomState();
     }
@@ -505,6 +517,8 @@ const pieceMap = { 'p': 'pawn', 'n': 'knight', 'b': 'bishop', 'r': 'rook', 'q': 
 const PIECE_VALUES = { 'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0 };
 const START_COUNTS = { 'p': 8, 'n': 2, 'b': 2, 'r': 2, 'q': 1 };
 const CAPTURE_ORDER = ['p', 'n', 'b', 'r', 'q'];
+
+let matchStartCounts = { w: {}, b: {} }; // Track dynamic starting pieces
 
 let selectedSquare = null;
 let preventClick = false;
@@ -1242,6 +1256,13 @@ function attemptMove(from, to) {
 
     if (!moveObj) return false;
 
+    if (moveObj.flags && (moveObj.flags.includes('c') || moveObj.flags.includes('e'))) {
+        abilities[movingColor].earnedPoints = (abilities[movingColor].earnedPoints || 0) + PIECE_VALUES[moveObj.captured];
+        if (currentRoom) {
+            socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+        }
+    }
+
     // --- CUSTOM ABILITIES (Diddy Baby Oil) ---
     let slipSquare = null;
 
@@ -1606,15 +1627,9 @@ function clearValidMoves() {
 }
 
 function getCapturedPointsInfo(color) {
-    const { capByWhite, capByBlack } = getMaterialBalance();
-    const myCaps = color === 'w' ? capByWhite : capByBlack;
-
-    let totalValueAvailable = 0;
-    Object.keys(myCaps).forEach(pt => {
-        totalValueAvailable += (myCaps[pt] * PIECE_VALUES[pt]);
-    });
-
-    return { pointsAvailable: totalValueAvailable - (abilities[color].spentPoints || 0) };
+    const earned = abilities[color].earnedPoints || 0;
+    const spent = abilities[color].spentPoints || 0;
+    return { pointsAvailable: earned - spent };
 }
 
 function updateEpsteinBuyTargets(color) {
@@ -1748,12 +1763,13 @@ function getMaterialBalance() {
         }
     }
 
-    const capByWhite = {};
+   const capByWhite = {};
     const capByBlack = {};
 
     ['p', 'n', 'b', 'r', 'q'].forEach(pt => {
-        capByWhite[pt] = Math.max(0, START_COUNTS[pt] - currentCounts.b[pt]);
-        capByBlack[pt] = Math.max(0, START_COUNTS[pt] - currentCounts.w[pt]);
+        // Use the dynamic matchStartCounts instead of the standard START_COUNTS
+        capByWhite[pt] = Math.max(0, (matchStartCounts.b[pt] || 0) - currentCounts.b[pt]);
+        capByBlack[pt] = Math.max(0, (matchStartCounts.w[pt] || 0) - currentCounts.w[pt]);
     });
 
     return { score: white - black, capByWhite, capByBlack, currentCounts };

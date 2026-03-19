@@ -162,23 +162,8 @@ function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     return tokens.join(' ');
 }
 
-function getEpsteinPoints(fen, color, spentPoints) {
-    const game = new Chess(fen);
-    const counts = { p: 0, n: 0, b: 0, r: 0, q: 0 };
-    const enemy = color === 'w' ? 'b' : 'w';
-    const board = game.board();
-    for (let r = 0; r < 8; r++) {
-        for (let c = 0; c < 8; c++) {
-            const p = board[r][c];
-            // Safe traversal applied
-            if (p?.color === enemy && p?.type && p.type !== 'k') counts[p.type]++;
-        }
-    }
-    let pts = 0;
-    for (let pt in START_COUNTS) {
-        pts += Math.max(0, START_COUNTS[pt] - counts[pt]) * FRONTEND_VALUES[pt];
-    }
-    return pts - (spentPoints || 0);
+function getEpsteinPoints(abilities, color) {
+    return (abilities[color]?.earnedPoints || 0) - (abilities[color]?.spentPoints || 0);
 }
 
 // ---- Get All Ability Moves for AI ----
@@ -217,9 +202,9 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
-    if (char === 'epstein') {
+ if (char === 'epstein') {
         const enemyColor = color === 'w' ? 'b' : 'w';
-        const availablePts = getEpsteinPoints(fen, color, ab.spentPoints);
+        const availablePts = getEpsteinPoints(abilities, color);
         const boardState = game.board();
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
@@ -417,9 +402,9 @@ function evaluate(game, chars, abilities) {
     let score = 0;
     let nonPawnMaterial = 0;
 
-    ['w', 'b'].forEach(c => {
+   ['w', 'b'].forEach(c => {
         if (chars && chars[c] === 'epstein' && abilities && abilities[c]) {
-            const unspent = getEpsteinPoints(game.fen(), c, abilities[c].spentPoints);
+            const unspent = getEpsteinPoints(abilities, c);
             const bankValue = unspent * 50;
             if (c === 'w') score += bankValue;
             else score -= bankValue;
@@ -510,6 +495,10 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
             childAbilities[color].movesSinceWall = 0;
         }
     } else {
+        if (move.flags && (move.flags.includes('c') || move.flags.includes('e'))) {
+            childAbilities[color].earnedPoints = (childAbilities[color].earnedPoints || 0) + (FRONTEND_VALUES[move.captured] || 0);
+        }
+
         let slipSquare = null;
         const enemyColor = color === 'w' ? 'b' : 'w';
 
