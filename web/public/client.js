@@ -1510,18 +1510,28 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
         if (game.in_check()) {
             abilities.w.georgeConsecutiveChecks++;
         if (abilities.w.georgeConsecutiveChecks >= 3) {
-    const side = getSide('w');
-    const label = document.getElementById(`${side}-thinking`);
-    label.style.color = 'red';
-    label.style.fontSize = '1.5em';
-    label.textContent = "I can't breathe!";
-    label.style.display = 'inline';
-    setTimeout(() => {
-        if (gameMode === 'multi' && selectedMultiplayerMode === 'arena') {
-            // In Arena Mode, Black wins
-            if (myColor === 'b') {
-                socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: 'b' });
-            }
+            const side = getSide('w');
+            const label = document.getElementById(`${side}-thinking`);
+            label.style.color = 'red';
+            label.style.fontSize = '1.5em';
+            label.textContent = "I can't breathe!";
+            label.style.display = 'inline';
+
+            // --- UI CLEANUP: Hide and reset the text after 2 seconds ---
+            setTimeout(() => {
+                label.style.display = 'none';
+                label.textContent = '🤔 Thinking...';
+                label.style.color = '';
+                label.style.fontSize = '';
+            }, 2000);
+            // -----------------------------------------------------------
+
+            setTimeout(() => {
+                if (gameMode === 'multi' && selectedMultiplayerMode === 'arena') {
+                    // In Arena Mode, Black wins
+                    if (myColor === 'b') {
+                        socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: 'b' });
+                    }
         } else {
             // Quick Game / Singleplayer fallback
             const modal = document.getElementById('game-over-modal');
