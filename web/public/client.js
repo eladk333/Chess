@@ -995,10 +995,20 @@ function updateAbilityDisplay() {
             status.textContent = `${myScoreInfo.pointsAvailable} pts available`;
             btn.disabled = game.turn() !== color;
         } else if (char === 'diddy') {
+            const isOpponent = (gameMode === 'multi' && myColor && color !== myColor);
+            
             if (abilities[color].babyOilActive) {
-                status.textContent = 'Trap Active!';
-                btn.disabled = true;
-                btn.classList.add('active');
+                if (isOpponent) {
+                    status.textContent = 'Ready!';
+                    btn.disabled = true; 
+                    btn.classList.add('ready');
+                    btn.classList.remove('active');
+                } else {
+                    status.textContent = 'Trap Active!';
+                    btn.disabled = true;
+                    btn.classList.add('active');
+                    btn.classList.remove('ready');
+                }
             } else {
                 const charge = abilities[color].movesSinceBabyOil;
                 btn.classList.remove('active');
@@ -1323,13 +1333,30 @@ function attemptMove(from, to) {
         let newFen = movePieceInFen(fen, to, slipSquare, false);
         game.load(newFen);
         abilities[enemyColor].babyOilActive = false;
+        
+        // --- DIDDY VOICE LINE TRIGGER ---
+        const diddySide = getSide(enemyColor);
+        const label = document.getElementById(`${diddySide}-thinking`);
+        label.style.color = '#ff66b2';
+        label.style.fontSize = '1.5em';
+        label.textContent = "You got diddly!";
+        label.style.display = 'inline';
+
+        setTimeout(() => {
+            label.style.display = 'none';
+            label.textContent = '🤔 Thinking...';
+            label.style.color = '';
+            label.style.fontSize = '';
+        }, 2000);
+        // --------------------------------
+
         postMoveLogic(movingColor, true);
         syncCustomState();
         playSound('slip');
         updateBoard(slipSquare);
         setTimeout(scheduleAiTurnIfNeeded, 500);
         return true;
-    } else if (currentRoom) {
+    } if (currentRoom) {
         // Multiplayer normal move: send to server, it echoes back via state_update — don't apply locally
         socket.emit('make_move', {
             roomId: currentRoom,
@@ -1496,7 +1523,8 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
 
     ['w', 'b'].forEach(c => {
         const side = getSide(c);
-        if (chars[c] === 'diddy' && abilities[c].babyOilActive) {
+        const isOpponent = (gameMode === 'multi' && myColor && c !== myColor);
+        if (chars[c] === 'diddy' && abilities[c].babyOilActive && !isOpponent) {
             document.getElementById(`${side}-ability-btn`).classList.add('active');
         }
     });
