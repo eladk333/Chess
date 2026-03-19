@@ -671,6 +671,15 @@ body.hunting-mode .piece {
     /* Hide the piece visually */
 }
 
+.friendly-smoke {
+    background: radial-gradient(circle, rgba(90, 95, 100, 0.35) 15%, rgba(40, 45, 50, 0.25) 85%);
+    filter: blur(1px);
+}
+
+.friendly-obscured .piece {
+    opacity: 0.90 !important; /* Slight fade for the caster */
+}
+
 @keyframes smokeDrift {
     0% {
         transform: scale(1) translate(0, 0);

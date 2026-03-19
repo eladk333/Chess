@@ -857,17 +857,21 @@ function updateBoard(animateSlipForSquare = null) {
         Array.from(sq.children).forEach(child => {
             if (child.classList.contains('piece') || child.classList.contains('smoke-overlay') || child.classList.contains('wall-overlay')) child.remove();
         });
-        sq.classList.remove('highlight', 'selected', 'valid-move', 'valid-capture', 'buy-target', 'slipping', 'obscured');
+        sq.classList.remove('highlight', 'selected', 'valid-move', 'valid-capture', 'buy-target', 'slipping', 'obscured', 'friendly-obscured');
     });
 
-    const smokedSquares = new Set();
+    const smokedSquaresW = new Set();
+    const smokedSquaresB = new Set();
     ['w', 'b'].forEach(c => {
         if (abilities[c].smokeActive && abilities[c].smokeCenterSq) {
             const center = sqToCoords(abilities[c].smokeCenterSq);
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
                     const sq = coordsToSq(center.c + dc, center.r + dr);
-                    if (sq) smokedSquares.add(sq);
+                    if (sq) {
+                        if (c === 'w') smokedSquaresW.add(sq);
+                        if (c === 'b') smokedSquaresB.add(sq);
+                    }
                 }
             }
         }
@@ -920,10 +924,34 @@ pieceEl.addEventListener('dragend', handleDragEnd);
                 document.getElementById(sqId).appendChild(pieceEl);
             }
 
-            if (smokedSquares.has(sqId)) {
-                document.getElementById(sqId).classList.add('obscured');
+            const smokedByW = smokedSquaresW.has(sqId);
+            const smokedByB = smokedSquaresB.has(sqId);
+
+            if (smokedByW || smokedByB) {
+                let isMySmoke = false;
+                let isEnemySmoke = false;
+                
+                // Viewer is "myColor" in multiplayer, or whoever's turn it is in singleplayer
+                const viewerColor = (gameMode === 'multi' && myColor) ? myColor : game.turn();
+
+                if (viewerColor === 'w') {
+                    isMySmoke = smokedByW;
+                    isEnemySmoke = smokedByB;
+                } else {
+                    isMySmoke = smokedByB;
+                    isEnemySmoke = smokedByW;
+                }
+
                 const smokeEl = document.createElement('div');
-                smokeEl.className = 'smoke-overlay';
+                
+                if (isEnemySmoke) {
+                    document.getElementById(sqId).classList.add('obscured');
+                    smokeEl.className = 'smoke-overlay';
+                } else if (isMySmoke) {
+                    document.getElementById(sqId).classList.add('friendly-obscured');
+                    smokeEl.className = 'smoke-overlay friendly-smoke';
+                }
+                
                 document.getElementById(sqId).appendChild(smokeEl);
             }
 
