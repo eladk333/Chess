@@ -699,7 +699,7 @@ function setupAbilityUI(color, side) {
         status.textContent = 'Costs 3x Points';
         btn.disabled = false;
     } else if (chars[color] === 'bibi') {
-        btn.textContent = 'Ultimate Strike';
+        btn.textContent = 'Air Strike';
         status.textContent = '0/10 Moves';
     } else if (chars[color] === 'diddy') {
         btn.textContent = 'Baby Oil';
