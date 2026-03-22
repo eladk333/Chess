@@ -184,7 +184,8 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('state_update', {
                     fen: game.chess.fen(),
                     turn: game.chess.turn(),
-                    lastMoveColor: turn
+                    lastMoveColor: turn,
+                    lastMove: result
                 });
             } else {
                 socket.emit('invalid_move', { fen: game.chess.fen() });

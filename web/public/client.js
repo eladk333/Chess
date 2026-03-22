@@ -364,7 +364,7 @@ socket.on('state_update', (data) => {
     // Run postMoveLogic for whoever just moved — both players need it
     // skipSync=true so we don't trigger a loop
     if (data.lastMoveColor) {
-        postMoveLogic(data.lastMoveColor, true);
+        postMoveLogic(data.lastMoveColor, true, data.lastMove);
     }
     updateBoard();
     scheduleAiTurnIfNeeded();
@@ -1307,7 +1307,7 @@ function attemptMove(from, to) {
     if (myColor && game.turn() !== myColor) return false;
 
     // --- EINSTEIN PASSIVE INTERCEPT ---
-    let collapsedAnything = false;
+    let boardStateAltered = false;
     let currentTurn = game.turn();
     let enemyColorCurrent = currentTurn === 'w' ? 'b' : 'w';
 
@@ -1334,7 +1334,7 @@ function attemptMove(from, to) {
     [...qpsEnemy].forEach(qp => {
         if (qp.squares.some(sq => interactSquares.includes(sq) || sq === from)) {
             collapseQuantumPiece(qp.id, enemyColorCurrent);
-            collapsedAnything = true;
+            boardStateAltered = true;
         }
     });
 
@@ -1345,7 +1345,7 @@ function attemptMove(from, to) {
             // Did our move intersect itself or are we capturing?
             if (isCaptureAttempt || qp.squares.some(sq => interactSquares.includes(sq))) {
                 collapseQuantumPiece(qp.id, currentTurn);
-                collapsedAnything = true;
+                boardStateAltered = true;
             } else {
                 // Moving to an empty square with no intersection => align true state to allow accumulation
                 if (qp.trueSquare !== from) {
@@ -1353,13 +1353,14 @@ function attemptMove(from, to) {
                     fen = movePieceInFen(fen, qp.trueSquare, from, false); 
                     game.load(fen);
                     qp.trueSquare = from;
+                    boardStateAltered = true; // MUST trigger sync so multiplayer server recognizes the shifted FEN before make_move
                 }
             }
         } 
         // If we are moving ANOTHER piece that intersects THIS ghost:
         else if (qp.squares.some(sq => interactSquares.includes(sq))) {
             collapseQuantumPiece(qp.id, currentTurn);
-            collapsedAnything = true;
+            boardStateAltered = true;
         }
     });
 
@@ -1402,8 +1403,8 @@ function attemptMove(from, to) {
                 const interSq = coordsToSq(interC, interR);
 
                 if (interSq && !game.get(interSq)) {
-                    const targetPiece = game.get(to);
-                    if (targetPiece && targetPiece.color !== movingColor && targetPiece.type !== 'k') {
+                    const targetPieceInner = game.get(to); // renamed to avoid clash
+                    if (targetPieceInner && targetPieceInner.color !== movingColor && targetPieceInner.type !== 'k') {
                         abilities[movingColor].uniSniperActive = false;
                         const newFen = movePieceInFen(game.fen(), from, to, true);
                         game.load(newFen);
@@ -1427,9 +1428,24 @@ function attemptMove(from, to) {
 
     if (isBlocked || !moveObj) {
         // If a valid collapse happened but the resultant move is illegal, UI must still reflect collapse
-        if (collapsedAnything) {
+        if (boardStateAltered) {
+            // A collapse happened and the move failed (e.g. attacked an empty square).
+            // The player loses their turn! We manually flip the FEN turn.
+            let fenTokens = game.fen().split(' ');
+            fenTokens[1] = fenTokens[1] === 'w' ? 'b' : 'w';
+            fenTokens[3] = '-'; // clear en-passant 
+            game.load(fenTokens.join(' '));
+
             updateBoard();
-            if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+            if (currentRoom) {
+                // By syncing this FEN, the server's internal game state flips to the next player!
+                socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+            }
+            
+            // Trigger AI if it happens to be next
+            if (playerTypes[game.turn()] !== 'human') {
+                setTimeout(scheduleAiTurnIfNeeded, 500);
+            }
         }
         return false;
     }
@@ -1497,6 +1513,9 @@ function attemptMove(from, to) {
         setTimeout(scheduleAiTurnIfNeeded, 500);
         return true;
     } if (currentRoom) {
+        if (boardStateAltered) {
+            socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+        }
         // Multiplayer normal move: send to server, it echoes back via state_update — don't apply locally
         socket.emit('make_move', {
             roomId: currentRoom,
@@ -1580,9 +1599,9 @@ function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     return tokens.join(' ');
 }
 
-function postMoveLogic(colorWhoMoved, skipSync = false) {
+function postMoveLogic(colorWhoMoved, skipSync = false, passedLastMove = null) {
     const hist = game.history({ verbose: true });
-    const lastMove = hist.length > 0 ? hist[hist.length - 1] : null;
+    const lastMove = passedLastMove || (hist.length > 0 ? hist[hist.length - 1] : null);
     const isCapture = lastMove && (lastMove.flags.includes('c') || lastMove.flags.includes('e'));
 
     if (chars[colorWhoMoved] === 'bibi' && isCapture) {
