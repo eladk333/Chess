@@ -417,9 +417,9 @@ function startGameFlow(selectedChars) {
         }
     }
 
-   abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
+   abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] };
     
-    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false };
+    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] };
     document.body.classList.remove('hunting-mode');
     
     // Reset AI thinking lock and ensure single-player board is strictly reset
@@ -556,8 +556,8 @@ let aiThinking = false;
 
 const chars = { w: 'none', b: 'none' };
 const abilities = {
-    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [] },
-    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [] }
+    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] },
+    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] }
 };
 
 const ULTIMATE_CHARGE_REQ = 10;
@@ -565,7 +565,7 @@ const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
 const avatarMap = {
-   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jfif'
+   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jfif', 'einstein': 'einstein.jpg'
 };
 function generateCustomFen(wChar, bChar) {
     let grid = [
@@ -680,6 +680,7 @@ function formatCharName(charId) {
     if (charId === 'trump') return 'Donald Trump';
     if (charId === 'george') return 'George Floyd';
     if (charId === 'stalin') return 'Joseph Stalin';
+    if (charId === 'einstein') return 'Albert Einstein';
     return '';
 }
 
@@ -728,6 +729,11 @@ function setupAbilityUI(color, side) {
     } else if (chars[color] === 'stalin') {
         btn.textContent = 'Passive';
         status.textContent = 'Soviet Wave';
+    } else if (chars[color] === 'einstein') {
+        btn.textContent = 'Passive';
+        btn.classList.add('ready');
+        status.textContent = 'Superposition';
+        btn.disabled = true;
     }
 }
 
@@ -901,27 +907,32 @@ function updateBoard(animateSlipForSquare = null) {
 
             const piece = boardState[row][col];
             if (piece) {
-                const pieceEl = document.createElement('div');
-                pieceEl.className = 'piece';
+                // If this is the true underlying square of a quantum piece, DO NOT render the actual piece
+                const isQuantumTrueLoc = ['w', 'b'].some(c => 
+                    (abilities[c].quantumPieces || []).some(qp => qp.trueSquare === sqId)
+                );
+                
+                if (!isQuantumTrueLoc) {
+                    const pieceEl = document.createElement('div');
+                    pieceEl.className = 'piece';
 
-                const colorStr = piece.color === 'w' ? 'white' : 'black';
-                const typeStr = pieceMap[piece.type];
+                    const colorStr = piece.color === 'w' ? 'white' : 'black';
+                    const typeStr = pieceMap[piece.type];
 
-                pieceEl.style.backgroundImage = `url('assets/${colorStr}-${typeStr}.png')`;
-                //pieceEl.style.pointerEvents = 'none';
-                pieceEl.dataset.square = sqId;
-                pieceEl.dataset.color = piece.color;
+                    pieceEl.style.backgroundImage = `url('assets/${colorStr}-${typeStr}.png')`;
+                    pieceEl.dataset.square = sqId;
+                    pieceEl.dataset.color = piece.color;
 
-                if (sqId === animateSlipForSquare) {
-                    pieceEl.classList.add('slipping');
+                    if (sqId === animateSlipForSquare) {
+                        pieceEl.classList.add('slipping');
+                    }
+
+                    pieceEl.draggable = true;
+                    pieceEl.addEventListener('dragstart', handleDragStart);
+                    pieceEl.addEventListener('dragend', handleDragEnd);
+
+                    document.getElementById(sqId).appendChild(pieceEl);
                 }
-
-                pieceEl.draggable = true;
-pieceEl.addEventListener('dragstart', handleDragStart);
-pieceEl.addEventListener('dragend', handleDragEnd);
-
-
-                document.getElementById(sqId).appendChild(pieceEl);
             }
 
             const smokedByW = smokedSquaresW.has(sqId);
@@ -963,6 +974,26 @@ pieceEl.addEventListener('dragend', handleDragEnd);
             }
         }
     }
+
+    // Render Quantum Pieces
+    ['w', 'b'].forEach(c => {
+        (abilities[c].quantumPieces || []).forEach(qp => {
+            qp.squares.forEach(sq => {
+                const ghostEl = document.createElement('div');
+                ghostEl.className = 'piece quantum-ghost';
+                ghostEl.style.backgroundImage = `url('assets/${c === 'w' ? 'white' : 'black'}-${pieceMap[qp.type]}.png')`;
+                ghostEl.style.opacity = '0.5';
+                ghostEl.dataset.square = sq;
+                ghostEl.dataset.color = qp.color;
+                ghostEl.draggable = true;
+                ghostEl.addEventListener('dragstart', handleDragStart);
+                ghostEl.addEventListener('dragend', handleDragEnd);
+                
+                const targetSqEl = document.getElementById(sq);
+                if (targetSqEl) targetSqEl.appendChild(ghostEl);
+            });
+        });
+    });
 
     updateCaptureBars();
     updateAbilityDisplay();
@@ -1080,6 +1111,11 @@ function updateAbilityDisplay() {
             } else {
                 status.textContent = `Checks: ${abilities[color].georgeConsecutiveChecks || 0}/3`;
             }
+        } else if (char === 'einstein') {
+            status.textContent = 'Superposition';
+            btn.disabled = true;
+            btn.classList.remove('active');
+            btn.classList.add('ready');
         }
     });
 
@@ -1122,6 +1158,7 @@ function handleDrop(e) {
     if (!selectedSquare) return;
 
     const targetSquare = e.currentTarget.dataset.square;
+    
     attemptMove(selectedSquare, targetSquare);
     selectedSquare = null;
     clearValidMoves();
@@ -1129,9 +1166,20 @@ function handleDrop(e) {
 
 function handleSquareClick(sqId) {
     if (preventClick || game.game_over()) return;
+
     const turnColor = game.turn();
     if (playerTypes[turnColor] !== 'human' || aiThinking) return;
-    const piece = game.get(sqId);
+
+    let piece = game.get(sqId);
+
+    // Support clicking a ghost square that is empty in the underlying FEN
+    if (!piece) {
+        const qps = abilities[turnColor].quantumPieces || [];
+        const ghost = qps.find(q => q.squares.includes(sqId));
+        if (ghost && ghost.color === turnColor) {
+            piece = { type: ghost.type, color: ghost.color };
+        }
+    }
     if (chars[turnColor] === 'trump' && abilities[turnColor].placingWall && (gameMode !== 'multi' || turnColor === myColor)) {
         const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
         if (!piece && !allWalls.includes(sqId)) { 
@@ -1223,12 +1271,97 @@ function coordsToSq(c, r) {
     return String.fromCharCode(97 + c) + r;
 }
 
+// Helper for quantum intersection
+function getPathSquares(fromSq, toSq, pieceType) {
+    const from = sqToCoords(fromSq);
+    const to = sqToCoords(toSq);
+    const path = [];
+    if (!from || !to) return path;
+
+    if (pieceType === 'n') return path;
+
+    const dc = to.c - from.c;
+    const dr = to.r - from.r;
+
+    if (dc === 0 || dr === 0 || Math.abs(dc) === Math.abs(dr)) {
+        const stepC = dc === 0 ? 0 : Math.sign(dc);
+        const stepR = dr === 0 ? 0 : Math.sign(dr);
+        let currC = from.c + stepC;
+        let currR = from.r + stepR;
+        while (currC !== to.c || currR !== to.r) {
+            const sq = coordsToSq(currC, currR);
+            if (sq) path.push(sq);
+            currC += stepC;
+            currR += stepR;
+            if (path.length > 8) break; // Infinite loop safety
+        }
+    }
+    return path;
+}
+
 // --- UNIFIED ATTEMPT MOVE ---
 function attemptMove(from, to) {
     if (from === to) return false;
 
     // MULTIPLAYER CHECK: Prevent moving out of turn visually!
     if (myColor && game.turn() !== myColor) return false;
+
+    // --- EINSTEIN PASSIVE INTERCEPT ---
+    let collapsedAnything = false;
+    let currentTurn = game.turn();
+    let enemyColorCurrent = currentTurn === 'w' ? 'b' : 'w';
+
+    let qpsMy = abilities[currentTurn].quantumPieces || [];
+    let qpsEnemy = abilities[enemyColorCurrent].quantumPieces || [];
+
+    let pieceToMove = game.get(from);
+    if (!pieceToMove) {
+        const ghostInfo = qpsMy.find(q => q.squares.includes(from));
+        if (ghostInfo) pieceToMove = { type: ghostInfo.type, color: ghostInfo.color };
+    }
+    
+    // Calculate full interaction path including the destination
+    let pathSquares = pieceToMove ? getPathSquares(from, to, pieceToMove.type) : [];
+    let interactSquares = [to, ...pathSquares];
+
+    let targetIsEnemyGhost = qpsEnemy.some(q => q.squares.some(sq => interactSquares.includes(sq)));
+    let targetPieceReal = game.get(to);
+    let targetIsEnemyReal = targetPieceReal && targetPieceReal.color === enemyColorCurrent;
+
+    let isCaptureAttempt = targetIsEnemyGhost || targetIsEnemyReal;
+
+    // 1. Collapse enemy ghosts if we intersect their path or target
+    [...qpsEnemy].forEach(qp => {
+        if (qp.squares.some(sq => interactSquares.includes(sq) || sq === from)) {
+            collapseQuantumPiece(qp.id, enemyColorCurrent);
+            collapsedAnything = true;
+        }
+    });
+
+    // 2. Handle our own ghosts
+    [...qpsMy].forEach(qp => {
+        // If we are moving THIS ghost:
+        if (qp.squares.includes(from)) {
+            // Did our move intersect itself or are we capturing?
+            if (isCaptureAttempt || qp.squares.some(sq => interactSquares.includes(sq))) {
+                collapseQuantumPiece(qp.id, currentTurn);
+                collapsedAnything = true;
+            } else {
+                // Moving to an empty square with no intersection => align true state to allow accumulation
+                if (qp.trueSquare !== from) {
+                    let fen = game.fen();
+                    fen = movePieceInFen(fen, qp.trueSquare, from, false); 
+                    game.load(fen);
+                    qp.trueSquare = from;
+                }
+            }
+        } 
+        // If we are moving ANOTHER piece that intersects THIS ghost:
+        else if (qp.squares.some(sq => interactSquares.includes(sq))) {
+            collapseQuantumPiece(qp.id, currentTurn);
+            collapsedAnything = true;
+        }
+    });
 
     const movingColor = game.turn();
     const enemyColor = movingColor === 'w' ? 'b' : 'w';
@@ -1289,10 +1422,17 @@ function attemptMove(from, to) {
     // --- STANDARD MOVE VALIDATION ---
     const moves = game.moves({ verbose: true });
     const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
-    if (isBlockedByWall(game.fen(), from, to, allWalls)) return false;
+    const isBlocked = isBlockedByWall(game.fen(), from, to, allWalls);
     let moveObj = moves.find(m => m.from === from && m.to === to);
 
-    if (!moveObj) return false;
+    if (isBlocked || !moveObj) {
+        // If a valid collapse happened but the resultant move is illegal, UI must still reflect collapse
+        if (collapsedAnything) {
+            updateBoard();
+            if (currentRoom) socket.emit('sync_custom_state', { roomId: currentRoom, fen: game.fen(), abilities: abilities });
+        }
+        return false;
+    }
 
     if (moveObj.flags && (moveObj.flags.includes('c') || moveObj.flags.includes('e'))) {
         abilities[movingColor].earnedPoints = (abilities[movingColor].earnedPoints || 0) + PIECE_VALUES[moveObj.captured];
@@ -1517,7 +1657,7 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
         }
     });
 
-    document.body.classList.remove('hunting-mode', 'targeting-smoke', 'placing-wall');
+    document.body.classList.remove('hunting-mode', 'targeting-smoke', 'placing-wall', 'targeting-quantum');
     document.getElementById('bottom-ability-btn').classList.remove('active');
     document.getElementById('top-ability-btn').classList.remove('active');
 
@@ -1637,6 +1777,33 @@ function postMoveLogic(colorWhoMoved, skipSync = false) {
         }
     }
 
+    if (chars[colorWhoMoved] === 'einstein' && lastMove) {
+        // Track the superposition after the move
+        if (!abilities[colorWhoMoved].quantumPieces) abilities[colorWhoMoved].quantumPieces = [];
+        let qps = abilities[colorWhoMoved].quantumPieces;
+        
+        // Find existing superposition for this piece, using its true location (from lastMove.from)
+        let ghost = qps.find(q => q.trueSquare === lastMove.from);
+        
+        if (ghost) {
+            // Append the new true square to the array if it isn't already there
+            if (!ghost.squares.includes(lastMove.to)) {
+                ghost.squares.push(lastMove.to);
+            }
+            ghost.trueSquare = lastMove.to;
+            ghost.type = lastMove.piece;
+        } else {
+            // Create a new accumulating superposition starting with the initial from and to
+            qps.push({
+                id: Math.random().toString(36).substr(2, 9),
+                type: lastMove.piece,
+                color: colorWhoMoved,
+                squares: [lastMove.from, lastMove.to],
+                trueSquare: lastMove.to
+            });
+        }
+    }
+
     if (!skipSync) {
         syncCustomState();
     }
@@ -1646,7 +1813,17 @@ function showValidMoves(sqId) {
     const turnColor = game.turn();
     const piece = game.get(sqId);
 
-    const moves = game.moves({ square: sqId, verbose: true });
+    let fenToUse = game.fen();
+    const qps = abilities[turnColor].quantumPieces || [];
+    const clickedGhost = qps.find(q => q.squares.includes(sqId));
+    if (clickedGhost && clickedGhost.trueSquare !== sqId) {
+        fenToUse = movePieceInFen(fenToUse, clickedGhost.trueSquare, sqId, false);
+    }
+    
+    // We use a temporary clone to resolve what normal legal moves exist from this ghost's coordinate
+    const tempGame = new Chess(fenToUse);
+    const moves = tempGame.moves({ square: sqId, verbose: true });
+    
     const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
     moves.forEach(m => {
         if (isBlockedByWall(game.fen(), m.from, m.to, allWalls)) return;
@@ -2020,6 +2197,10 @@ function handleAiResponse(e) {
                     postMoveLogic(color);
                     updateBoard();
                     setTimeout(scheduleAiTurnIfNeeded, 500);
+                } else {
+                    // With Einstein, the board might have collapsed preventing completion
+                    // Tell AI to retry based on the newly resolved board
+                    setTimeout(scheduleAiTurnIfNeeded, 500);
                 }
             }
         }
@@ -2050,6 +2231,10 @@ function handleStockfishResponse(uciMove) {
             if (result) {
                 postMoveLogic(color);
                 updateBoard();
+                setTimeout(scheduleAiTurnIfNeeded, 500);
+                return;
+            } else {
+                // If it failed due to a collapse changing the game state, try again
                 setTimeout(scheduleAiTurnIfNeeded, 500);
                 return;
             }
@@ -2161,6 +2346,36 @@ function executeAbilityMove(color, move) {
     checkGameOver();
     setTimeout(scheduleAiTurnIfNeeded, 500);
 }
+}
+
+function collapseQuantumPiece(quantumId, color) {
+    const qpIndex = abilities[color].quantumPieces.findIndex(q => q.id === quantumId);
+    if (qpIndex === -1) return null;
+    
+    const qp = abilities[color].quantumPieces[qpIndex];
+    abilities[color].quantumPieces.splice(qpIndex, 1);
+    
+    // Equal probability collapse among all accumulated squares
+    const collapsedTo = qp.squares[Math.floor(Math.random() * qp.squares.length)];
+    
+    // If it collapsed to its trueSquare, FEN is already correct.
+    // If it collapsed to ANOTHER square, modify FEN.
+    if (collapsedTo !== qp.trueSquare) {
+        let fen = game.fen();
+        fen = movePieceInFen(fen, qp.trueSquare, collapsedTo, false); // false to not flip turn
+        game.load(fen);
+    }
+    
+    // Evaluate capture score strictly just in case (Stockfish fallback logic)
+    const targetPiece = game.get(collapsedTo);
+    if (targetPiece && targetPiece.color !== qp.color && targetPiece.type !== 'k') {
+        abilities[qp.color].earnedPoints = (abilities[qp.color].earnedPoints || 0) + (PIECE_VALUES[targetPiece.type] || 0);
+    }
+    
+    syncCustomState();
+    playSound('quantum_collapse');
+    updateBoard();
+    return collapsedTo;
 }
 
 initGame();

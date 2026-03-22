@@ -308,6 +308,20 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
+    if (char === 'einstein' && (ab.movesSinceQuantum || 0) >= 5) {
+        const boardState = game.board();
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const p = boardState[r][c];
+                if (p && p.color === color && p.type !== 'k' && p.type !== 'p') {
+                    const sq = String.fromCharCode(97 + c) + (8 - r);
+                    moves.push({ abilityType: 'einstein_quantum', sq: sq, color });
+                    break;
+                }
+            }
+        }
+    }
+
     // AI Logic for George capturing the King directly
     if (char === 'george' && color === 'b') {
         const enemyColor = color === 'w' ? 'b' : 'w';
@@ -366,6 +380,11 @@ function applyAbilityMove(fen, move) {
         tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
         tokens[3] = '-';
         return tokens.join(' ');
+    } else if (move.abilityType === 'einstein_quantum') {
+        const fenFlip = movePieceInFen(game.fen(), move.sq, move.sq, true);
+        const tempGame = new Chess(fenFlip);
+        tempGame.remove(move.sq);
+        return tempGame.fen();
     }
 
     const tokens = game.fen().split(' ');
@@ -414,6 +433,13 @@ function evaluate(game, chars, abilities) {
             if (c === 'w') score += smokeBonus;
             else score -= smokeBonus;
         }
+        if (chars && chars[c] === 'einstein' && abilities && abilities[c] && abilities[c].quantumPieces) {
+            abilities[c].quantumPieces.forEach(qp => {
+                const val = PIECE_VALUES[qp.type] || 0;
+                if (c === 'w') score += val;
+                else score -= val;
+            });
+        }
     });
 
     const board = game.board();
@@ -458,6 +484,7 @@ function scoreMoveForOrdering(game, move) {
         if (move.abilityType === 'kirk_snipe') return 300000;
         if (move.abilityType === 'aheud_smoke') return 250000;
         if (move.abilityType === 'trump_wall') return 220000;
+        if (move.abilityType === 'einstein_quantum') return 210000;
         if (move.abilityType === 'diddy_baby_oil') return 200000;
     }
     let score = 0;
@@ -493,6 +520,16 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
         } else if (move.abilityType === 'trump_wall') {
             childAbilities[color].walls = [move.sq];
             childAbilities[color].movesSinceWall = 0;
+        } else if (move.abilityType === 'einstein_quantum') {
+            childAbilities[color].movesSinceQuantum = 0;
+            if (!childAbilities[color].quantumPieces) childAbilities[color].quantumPieces = [];
+            const piece = new Chess(fen).get(move.sq);
+            const moveObjs = new Chess(fen).moves({ square: move.sq, verbose: true });
+            childAbilities[color].quantumPieces.push({
+                type: piece.type, color: piece.color,
+                squares: [...new Set(moveObjs.map(m => m.to))],
+                id: Math.random().toString(36).substr(2, 9)
+            });
         }
     } else {
         if (move.flags && (move.flags.includes('c') || move.flags.includes('e'))) {

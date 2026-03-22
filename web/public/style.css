@@ -940,3 +940,17 @@ body.placing-wall .square {
 #arena-char-pool .char-card {
     margin: 0;
 }
+
+/* Quantum Chess */
+.quantum-ghost {
+    opacity: 0.45;
+    filter: drop-shadow(0 0 6px #00ffff) grayscale(50%);
+    pointer-events: auto;
+    cursor: help;
+    z-index: 15;
+}
+
+body.targeting-quantum .square,
+body.targeting-quantum .piece {
+    cursor: crosshair !important;
+}
