@@ -497,6 +497,24 @@ function startGameFlow(selectedChars) {
     setupAbilityUI('w', getSide('w'));
     setupAbilityUI('b', getSide('b'));
 
+    ['w', 'b'].forEach(c => {
+        if (chars[c] === 'einstein') {
+            const side = getSide(c);
+            const label = document.getElementById(`${side}-thinking`);
+            label.style.color = '#00ffff';
+            label.style.fontSize = '1.1em';
+            label.textContent = 'Time is relative and so are your parents';
+            label.style.display = 'inline';
+            
+            setTimeout(() => {
+                label.style.display = 'none';
+                label.textContent = '🤔 Thinking...';
+                label.style.color = '';
+                label.style.fontSize = '';
+            }, 3000);
+        }
+    });
+
     document.getElementById('top-ai-stats').textContent = '';
     document.getElementById('bottom-ai-stats').textContent = '';
 
