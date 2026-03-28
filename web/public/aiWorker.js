@@ -117,10 +117,37 @@ function coordsToSq(c, r) {
     if (c < 0 || c > 7 || r < 1 || r > 8) return null;
     return String.fromCharCode(97 + c) + r;
 }
-// Wraps standard chess.js move generation so it doesn't crash if a King is capturable
-function safeGetMoves(game) {
-    try { return game.moves({ verbose: true }); } 
-    catch (e) { return []; }
+// Wraps standard chess.js move generation, injecting dummy pieces for walls to fix Phantom Checks
+function safeGetMovesWithWalls(fen, abilities) {
+    try {
+        const tempGame = new Chess(fen);
+        const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
+        if (allWalls.length === 0) {
+            return tempGame.moves({ verbose: true }).filter(m => !isBlockedByWall(fen, m.from, m.to, allWalls));
+        }
+        
+        const turn = tempGame.turn();
+        allWalls.forEach(sq => {
+            if (!tempGame.get(sq)) tempGame.put({type: 'p', color: turn}, sq);
+        });
+        return tempGame.moves({ verbose: true }).filter(m => 
+            !allWalls.includes(m.from) && !isBlockedByWall(fen, m.from, m.to, allWalls)
+        );
+    } catch (e) { return []; }
+}
+
+// Determines if a player is in check mathematically, respecting physical walls
+function isTrueCheck(fen, abilities) {
+    try {
+        const tempGame = new Chess(fen);
+        const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
+        if (allWalls.length === 0) return tempGame.in_check();
+        const turn = tempGame.turn();
+        allWalls.forEach(sq => {
+            if (!tempGame.get(sq)) tempGame.put({type: 'p', color: turn}, sq);
+        });
+        return tempGame.in_check();
+    } catch(e) { return false; }
 }
 function movePieceInFen(fen, fromSq, toSq, flipTurn = true) {
     if (!fromSq || !toSq) return fen;
@@ -409,9 +436,12 @@ function evaluate(game, chars, abilities) {
     if (!whiteKing) return -1000000;
     if (!blackKing) return 1000000;
 
+    const validMoves = safeGetMovesWithWalls(game.fen(), abilities);
+    const hasValidMoves = validMoves.length > 0;
+    const currentlyInCheck = isTrueCheck(game.fen(), abilities);
 
-    if (game.in_checkmate()) return game.turn() === 'w' ? -100000 : 100000;
-    if (game.game_over()) return 0;
+    if (currentlyInCheck && !hasValidMoves) return game.turn() === 'w' ? -100000 : 100000;
+    if (!currentlyInCheck && !hasValidMoves) return 0;
     
     // George White Penalty
     if (chars && chars.w === 'george' && abilities && abilities.w && abilities.w.georgeConsecutiveChecks >= 3) {

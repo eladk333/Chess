@@ -1438,10 +1438,18 @@ function attemptMove(from, to) {
         }
     }
 
-    // --- STANDARD MOVE VALIDATION ---
-    const moves = game.moves({ verbose: true });
+    // --- STANDARD MOVE VALIDATION WITH PHANTOM CHECK FIX ---
     const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
-    const isBlocked = isBlockedByWall(game.fen(), from, to, allWalls);
+    const simGame = new Chess(game.fen());
+    const simTurn = simGame.turn();
+    
+    // Inject phantom-check blockers
+    allWalls.forEach(sq => {
+        if (!simGame.get(sq)) simGame.put({type: 'p', color: simTurn}, sq);
+    });
+    
+    const moves = simGame.moves({ verbose: true });
+    const isBlocked = isBlockedByWall(game.fen(), from, to, allWalls) || allWalls.includes(from);
     let moveObj = moves.find(m => m.from === from && m.to === to);
 
     if (isBlocked || !moveObj) {
@@ -1859,11 +1867,17 @@ function showValidMoves(sqId) {
     
     // We use a temporary clone to resolve what normal legal moves exist from this ghost's coordinate
     const tempGame = new Chess(fenToUse);
+    const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
+    const turn = tempGame.turn();
+    
+    // Inject phantom-check blockers into the engine
+    allWalls.forEach(sq => {
+        if (!tempGame.get(sq)) tempGame.put({type: 'p', color: turn}, sq);
+    });
     const moves = tempGame.moves({ square: sqId, verbose: true });
     
-    const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
     moves.forEach(m => {
-        if (isBlockedByWall(game.fen(), m.from, m.to, allWalls)) return;
+        if (allWalls.includes(m.from) || isBlockedByWall(game.fen(), m.from, m.to, allWalls)) return;
         const targetSq = document.getElementById(m.to);
         if (targetSq) {
             if (m.flags.includes('c') || m.flags.includes('e')) {
@@ -2142,24 +2156,54 @@ function checkGameOver() {
         return; // Stop further checks
     }
 
-    // --- STANDARD CHESS.JS CHECKS ---
-    if (game.game_over()) {
+   // --- STANDARD CHESS.JS & PHANTOM CHECKS ---
+    const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
+    const simGame = new Chess(game.fen());
+    const turn = simGame.turn();
+    
+    allWalls.forEach(sq => {
+        if (!simGame.get(sq)) simGame.put({type: 'p', color: turn}, sq);
+    });
+
+    const validMoves = simGame.moves({ verbose: true }).filter(m => !allWalls.includes(m.from) && !isBlockedByWall(game.fen(), m.from, m.to, allWalls));
+    const hasValidMoves = validMoves.length > 0;
+    const trueInCheck = simGame.in_check();
+
+    const isCustomCheckmate = trueInCheck && !hasValidMoves;
+    const isCustomStalemate = !trueInCheck && !hasValidMoves;
+
+    // --- PREMATURE BURIAL PREVENTION ---
+    const char = chars[turn];
+    const ab = abilities[turn];
+    const canSave = ab && (
+        (char === 'epstein' && ((ab.earnedPoints || 0) - (ab.spentPoints || 0)) >= 3) ||
+        (char === 'bibi' && ab.movesSinceLastUltimate >= 10) ||
+        (char === 'kirk' && ab.movesSinceUniSniper >= 3 && !ab.uniSniperActive) ||
+        (char === 'trump' && ab.movesSinceWall >= 3 && !ab.placingWall) ||
+        (char === 'einstein' && ab.quantumPieces && ab.quantumPieces.length > 0)
+    );
+
+    if (isCustomCheckmate && canSave) {
+        return; // Halt checkmate! Allow player to use ability to save themselves.
+    }
+
+    if (simGame.game_over() || isCustomCheckmate || isCustomStalemate) {
         let winnerCol = null;
-        if (game.in_checkmate()) {
-            winnerCol = game.turn() === 'w' ? 'b' : 'w';
+        if (isCustomCheckmate) {
+            winnerCol = turn === 'w' ? 'b' : 'w';
             const winner = winnerCol === 'b' ? 'Black' : 'White';
             msg.textContent = `Checkmate! ${winner} wins.`;
-        } else if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
+        } else if (simGame.in_draw() || simGame.in_stalemate() || simGame.in_threefold_repetition() || isCustomStalemate) {
             winnerCol = 'draw';
             msg.textContent = 'Game drawn!';
         }
 
         if (gameMode === 'multi' && selectedMultiplayerMode === 'arena' && (myColor === winnerCol || winnerCol === 'draw' && myColor === 'w')) {
-            // Only emit from one client on draw to prevent double counting
             socket.emit('arena_match_ended', { roomId: currentRoom, winnerColor: winnerCol });
         }
 
         modal.classList.remove('hidden');
+    
     }
 }
 
