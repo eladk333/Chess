@@ -417,9 +417,9 @@ function startGameFlow(selectedChars) {
         }
     }
 
-   abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] };
+   abilities.w = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [], movesSincePortals: 8, placingPortals: false, portals: [] };
     
-    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] };
+    abilities.b = { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, spentPoints: 0, earnedPoints: 0, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], georgeConsecutiveChecks: 0, georgeSecondMovePending: false, movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [], movesSincePortals: 8, placingPortals: false, portals: [] };
     document.body.classList.remove('hunting-mode');
     
     // Reset AI thinking lock and ensure single-player board is strictly reset
@@ -574,8 +574,8 @@ let aiThinking = false;
 
 const chars = { w: 'none', b: 'none' };
 const abilities = {
-    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] },
-    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [] }
+    w: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [], movesSincePortals: 8, placingPortals: false, portals: [] },
+    b: { movesSinceLastUltimate: 0, huntingMode: false, movesSinceBabyOil: 10, babyOilActive: false, movesSinceUniSniper: 5, uniSniperActive: false, movesSinceSmoke: 5, smokeActive: false, smokeRemainingMoves: 0, smokeCenterSq: null, targetingSmoke: false, movesSinceWall: 3, placingWall: false, walls: [], movesSinceQuantum: 5, quantumTargeting: false, quantumPieces: [], movesSincePortals: 8, placingPortals: false, portals: [] }
 };
 
 const ULTIMATE_CHARGE_REQ = 10;
@@ -583,7 +583,7 @@ const BABY_OIL_COOLDOWN = 5;
 const UNI_SNIPER_COOLDOWN = 3;
 
 const avatarMap = {
-   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jfif', 'einstein': 'einstein.jpg'
+   'none': 'virgin_human.png', 'epstein': 'epstien.jpg', 'bibi': 'bibi.png', 'diddy': 'diddy.jpg', 'kirk': 'kirk.jfif', 'noam': 'noam.jfif', 'shlomo': 'shlomo.jfif', 'dvir': 'dvir.jfif', 'aheud': 'barak.png', 'trump': 'trump.jfif', 'george': 'george.jfif', 'stalin': 'stalin.jfif', 'einstein': 'einstein.jpg', 'hawking': 'hawking.png'
 };
 function generateCustomFen(wChar, bChar) {
     let grid = [
@@ -699,6 +699,7 @@ function formatCharName(charId) {
     if (charId === 'george') return 'George Floyd';
     if (charId === 'stalin') return 'Joseph Stalin';
     if (charId === 'einstein') return 'Albert Einstein';
+    if (charId === 'hawking') return 'Stephen Hawking';
     return '';
 }
 
@@ -752,6 +753,11 @@ function setupAbilityUI(color, side) {
         btn.classList.add('ready');
         status.textContent = 'Superposition';
         btn.disabled = true;
+    } else if (chars[color] === 'hawking') {
+        btn.textContent = 'Portals';
+        btn.classList.add('ready');
+        status.textContent = 'Ready!';
+        btn.disabled = false;
     }
 }
 
@@ -833,6 +839,20 @@ function handleAbilityClick(color) {
                 document.body.classList.remove('placing-wall');
             }
         }
+    } else if (chars[color] === 'hawking') {
+        if (abilities[color].movesSincePortals >= 8 && !abilities[color].placingPortals) {
+            abilities[color].placingPortals = true;
+            abilities[color].portals = [];
+            const side = getSide(color);
+            const btn = document.getElementById(`${side}-ability-btn`);
+            btn.classList.add('active');
+            document.body.classList.add('placing-portals');
+            updateAbilityDisplay();
+        } else if (abilities[color].placingPortals) {
+            abilities[color].placingPortals = false;
+            document.body.classList.remove('placing-portals');
+            updateAbilityDisplay();
+        }
     }
 }
 
@@ -879,7 +899,7 @@ function createBoard() {
 function updateBoard(animateSlipForSquare = null) {
     document.querySelectorAll('.square').forEach(sq => {
         Array.from(sq.children).forEach(child => {
-            if (child.classList.contains('piece') || child.classList.contains('smoke-overlay') || child.classList.contains('wall-overlay')) child.remove();
+            if (child.classList.contains('piece') || child.classList.contains('smoke-overlay') || child.classList.contains('wall-overlay') || child.classList.contains('portal-overlay')) child.remove();
         });
         sq.classList.remove('highlight', 'selected', 'valid-move', 'valid-capture', 'buy-target', 'slipping', 'obscured', 'friendly-obscured');
     });
@@ -990,6 +1010,21 @@ function updateBoard(animateSlipForSquare = null) {
                 wallEl.className = 'wall-overlay';
                 document.getElementById(sqId).appendChild(wallEl);
             }
+
+            ['w', 'b'].forEach(c => {
+                if (abilities[c].portals) {
+                    if (abilities[c].portals[0] === sqId) {
+                        const portalEl = document.createElement('div');
+                        portalEl.className = 'portal-overlay portal-blue';
+                        document.getElementById(sqId).appendChild(portalEl);
+                    }
+                    if (abilities[c].portals[1] === sqId) {
+                        const portalEl = document.createElement('div');
+                        portalEl.className = 'portal-overlay portal-orange';
+                        document.getElementById(sqId).appendChild(portalEl);
+                    }
+                }
+            });
         }
     }
 
@@ -1134,6 +1169,21 @@ function updateAbilityDisplay() {
             btn.disabled = true;
             btn.classList.remove('active');
             btn.classList.add('ready');
+        } else if (char === 'hawking') {
+            const charge = abilities[color].movesSincePortals;
+            if (abilities[color].placingPortals) {
+                status.textContent = `Place ${abilities[color].portals.length === 0 ? 'Blue' : 'Orange'}`;
+                btn.disabled = true;
+                btn.classList.add('active');
+            } else if (charge >= 8) {
+                status.textContent = 'Ready!';
+                btn.disabled = game.turn() !== color;
+                btn.classList.add('ready');
+            } else {
+                status.textContent = `Cooldown: ${8 - charge}`;
+                btn.disabled = true;
+                btn.classList.remove('ready');
+            }
         }
     });
 
@@ -1197,6 +1247,27 @@ function handleSquareClick(sqId) {
         if (ghost && ghost.color === turnColor) {
             piece = { type: ghost.type, color: ghost.color };
         }
+    }
+    if (chars[turnColor] === 'hawking' && abilities[turnColor].placingPortals && (gameMode !== 'multi' || turnColor === myColor)) {
+        const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
+        if (!piece && !allWalls.includes(sqId) && !abilities[turnColor].portals.includes(sqId)) {
+            abilities[turnColor].portals.push(sqId);
+            if (abilities[turnColor].portals.length === 2) {
+                abilities[turnColor].placingPortals = false;
+                abilities[turnColor].movesSincePortals = 0;
+                document.body.classList.remove('placing-portals');
+                document.getElementById(`${getSide(turnColor)}-ability-btn`).classList.remove('active', 'ready');
+                switchTurn(); 
+                postMoveLogic(turnColor, true);
+                syncCustomState();
+                updateBoard();
+                setTimeout(scheduleAiTurnIfNeeded, 500);
+            } else {
+                updateAbilityDisplay();
+                updateBoard();
+            }
+        }
+        return;
     }
     if (chars[turnColor] === 'trump' && abilities[turnColor].placingWall && (gameMode !== 'multi' || turnColor === myColor)) {
         const allWalls = [...(abilities.w.walls || []), ...(abilities.b.walls || [])];
@@ -1449,7 +1520,27 @@ function attemptMove(from, to) {
     });
     
     const moves = simGame.moves({ verbose: true });
-    const isBlocked = isBlockedByWall(game.fen(), from, to, allWalls) || allWalls.includes(from);
+    let isBlocked = isBlockedByWall(game.fen(), from, to, allWalls) || allWalls.includes(from);
+
+    let portalMatchColor = null;
+    let portalIndex = -1;
+    ['w', 'b'].forEach(c => {
+        if (abilities[c].portals && abilities[c].portals.includes(to)) {
+            portalMatchColor = c;
+            portalIndex = abilities[c].portals.indexOf(to);
+        }
+    });
+
+    let otherPortalSq = null;
+    if (portalMatchColor && portalIndex !== -1 && abilities[portalMatchColor].portals.length === 2) {
+        otherPortalSq = abilities[portalMatchColor].portals[1 - portalIndex];
+    }
+    
+    if (otherPortalSq) {
+        const destPiece = game.get(otherPortalSq);
+        if (destPiece && destPiece.color === movingColor) isBlocked = true;
+    }
+
     let moveObj = moves.find(m => m.from === from && m.to === to);
 
     if (isBlocked || !moveObj) {
@@ -1508,6 +1599,26 @@ function attemptMove(from, to) {
     }
 
     // --- APPLY THE MOVE ---
+    if (otherPortalSq) {
+        game.move(moveObj);
+        const fen = game.fen();
+        
+        const destPiece = game.get(otherPortalSq);
+        if (destPiece && destPiece.color !== movingColor) {
+            abilities[movingColor].earnedPoints = (abilities[movingColor].earnedPoints || 0) + PIECE_VALUES[destPiece.type];
+        }
+
+        let newFen = movePieceInFen(fen, to, otherPortalSq, false);
+        game.load(newFen);
+        
+        postMoveLogic(movingColor, true);
+        syncCustomState();
+        playSound('slip');
+        updateBoard();
+        setTimeout(scheduleAiTurnIfNeeded, 500);
+        return true;
+    }
+
     if (slipSquare) {
         // Slip: apply locally and sync to opponent — do NOT emit make_move (server would overwrite with the wrong FEN)
         game.move(moveObj);
@@ -1689,9 +1800,11 @@ function postMoveLogic(colorWhoMoved, skipSync = false, passedLastMove = null) {
         }
     }
     if (chars[colorWhoMoved] === 'trump') abilities[colorWhoMoved].movesSinceWall++;
+    if (chars[colorWhoMoved] === 'hawking' && !abilities[colorWhoMoved].placingPortals) abilities[colorWhoMoved].movesSincePortals++;
 
    ['w', 'b'].forEach(c => {
         if (chars[c] === 'trump') abilities[c].placingWall = false;
+        if (chars[c] === 'hawking') abilities[c].placingPortals = false;
         if (chars[c] === 'epstein') {
             abilities[c].huntingMode = false;
         }
@@ -1702,7 +1815,7 @@ function postMoveLogic(colorWhoMoved, skipSync = false, passedLastMove = null) {
         }
     });
 
-    document.body.classList.remove('hunting-mode', 'targeting-smoke', 'placing-wall', 'targeting-quantum');
+    document.body.classList.remove('hunting-mode', 'targeting-smoke', 'placing-wall', 'placing-portals', 'targeting-quantum');
     document.getElementById('bottom-ability-btn').classList.remove('active');
     document.getElementById('top-ability-btn').classList.remove('active');
 
@@ -2415,6 +2528,16 @@ function executeAbilityMove(color, move) {
         switchTurn();
         postMoveLogic(color, true);
         playSound('wall');
+        syncCustomState();
+        updateBoard();
+        setTimeout(scheduleAiTurnIfNeeded, 500);
+    } else if (move.abilityType === 'hawking_portals') {
+        abilities[color].portals = [move.sq1, move.sq2];
+        abilities[color].movesSincePortals = 0;
+        abilities[color].placingPortals = false;
+        switchTurn();
+        postMoveLogic(color, true);
+        playSound('portal');
         syncCustomState();
         updateBoard();
         setTimeout(scheduleAiTurnIfNeeded, 500);

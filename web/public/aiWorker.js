@@ -105,6 +105,10 @@ function isBlockedByWall(gameFen, fromSq, toSq, allWalls) {
     }
     return false;
 }
+function safeGetMoves(game) {
+    try { return game.moves({ verbose: true }); }
+    catch(e) { return []; }
+}
 function getStandardMovesFiltered(game, fen, abilities) {
     const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
     return safeGetMoves(game).filter(m => !isBlockedByWall(fen, m.from, m.to, allWalls));
@@ -130,9 +134,24 @@ function safeGetMovesWithWalls(fen, abilities) {
         allWalls.forEach(sq => {
             if (!tempGame.get(sq)) tempGame.put({type: 'p', color: turn}, sq);
         });
-        return tempGame.moves({ verbose: true }).filter(m => 
+        let movesList = tempGame.moves({ verbose: true }).filter(m => 
             !allWalls.includes(m.from) && !isBlockedByWall(fen, m.from, m.to, allWalls)
         );
+        movesList = movesList.filter(m => {
+            let pMatchColor = null, pIndex = -1;
+            ['w', 'b'].forEach(c => {
+                if (abilities[c]?.portals && abilities[c].portals.includes(m.to)) {
+                    pMatchColor = c; pIndex = abilities[c].portals.indexOf(m.to);
+                }
+            });
+            if (pMatchColor && pIndex !== -1 && abilities[pMatchColor].portals.length === 2) {
+                const outSq = abilities[pMatchColor].portals[1 - pIndex];
+                const outPiece = tempGame.get(outSq);
+                if (outPiece && outPiece.color === turn) return false;
+            }
+            return true;
+        });
+        return movesList;
     } catch (e) { return []; }
 }
 
@@ -349,6 +368,26 @@ function getAbilityMoves(fen, chars, abilities, color) {
         }
     }
 
+    if (char === 'hawking' && (ab.movesSincePortals || 0) >= 8 && (!ab.portals || ab.portals.length < 2)) {
+        const boardState = game.board();
+        const emptySquares = [];
+        const allWalls = [...(abilities.w?.walls || []), ...(abilities.b?.walls || [])];
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                if (!boardState[r][c]) {
+                    const sq = String.fromCharCode(97 + c) + (8 - r);
+                    if (!allWalls.includes(sq)) emptySquares.push(sq);
+                }
+            }
+        }
+        if (emptySquares.length >= 2) {
+            moves.push({ abilityType: 'hawking_portals', sq1: emptySquares[0], sq2: emptySquares[emptySquares.length - 1], color });
+            if (emptySquares.length >= 4) {
+                 moves.push({ abilityType: 'hawking_portals', sq1: emptySquares[1], sq2: emptySquares[emptySquares.length - 2], color });
+            }
+        }
+    }
+
     // AI Logic for George capturing the King directly
     if (char === 'george' && color === 'b') {
         const enemyColor = color === 'w' ? 'b' : 'w';
@@ -402,7 +441,7 @@ function applyAbilityMove(fen, move) {
         return fen;
     } else if (move.abilityType === 'george_magic_win') {
     return movePieceInFen(game.fen(), move.from, move.to, true);
-    } else if (move.abilityType === 'trump_wall') {
+    } else if (move.abilityType === 'trump_wall' || move.abilityType === 'hawking_portals') {
         const tokens = game.fen().split(' ');
         tokens[1] = tokens[1] === 'w' ? 'b' : 'w';
         tokens[3] = '-';
@@ -513,6 +552,7 @@ function scoreMoveForOrdering(game, move) {
         if (move.abilityType === 'epstein_buy') return 500000 + (move.frontendCost * 100);
         if (move.abilityType === 'kirk_snipe') return 300000;
         if (move.abilityType === 'aheud_smoke') return 250000;
+        if (move.abilityType === 'hawking_portals') return 230000;
         if (move.abilityType === 'trump_wall') return 220000;
         if (move.abilityType === 'einstein_quantum') return 210000;
         if (move.abilityType === 'diddy_baby_oil') return 200000;
@@ -550,6 +590,10 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
         } else if (move.abilityType === 'trump_wall') {
             childAbilities[color].walls = [move.sq];
             childAbilities[color].movesSinceWall = 0;
+        } else if (move.abilityType === 'hawking_portals') {
+            childAbilities[color].portals = [move.sq1, move.sq2];
+            childAbilities[color].movesSincePortals = 0;
+            childAbilities[color].placingPortals = false;
         } else if (move.abilityType === 'einstein_quantum') {
             childAbilities[color].movesSinceQuantum = 0;
             if (!childAbilities[color].quantumPieces) childAbilities[color].quantumPieces = [];
@@ -588,7 +632,29 @@ function simulateMove(game, fen, move, color, chars, currentAbilities) {
             childAbilities[enemyColor].babyOilActive = false;
         }
 
-        if (slipSquare) {
+        let portalMatchColor = null;
+        let portalIndex = -1;
+        ['w', 'b'].forEach(c => {
+            if (childAbilities[c].portals && childAbilities[c].portals.includes(move.to)) {
+                portalMatchColor = c;
+                portalIndex = childAbilities[c].portals.indexOf(move.to);
+            }
+        });
+        let otherPortalSq = null;
+        if (portalMatchColor && portalIndex !== -1 && childAbilities[portalMatchColor].portals.length === 2) {
+            otherPortalSq = childAbilities[portalMatchColor].portals[1 - portalIndex];
+        }
+
+        if (otherPortalSq) {
+            game.move(move);
+            const fenAfterMove = game.fen();
+            const tempDestPiece = new Chess(fenAfterMove).get(otherPortalSq);
+            if (tempDestPiece && tempDestPiece.color !== color) {
+                childAbilities[color].earnedPoints = (childAbilities[color].earnedPoints || 0) + (FRONTEND_VALUES[tempDestPiece.type] || 0);
+            }
+            childFen = movePieceInFen(fenAfterMove, move.to, otherPortalSq, false);
+            game.undo();
+        } else if (slipSquare) {
             game.move(move);
             childFen = movePieceInFen(game.fen(), move.to, slipSquare, false);
             game.undo();
